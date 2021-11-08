@@ -14,7 +14,7 @@
       "patterns": [
         "*.tar.gz"
       ],
-      "help": ""
+      "help": "Path/hash to tarball of output from 'mergecollapsevariants'"
     },
     {
       "name": "phenofile",
@@ -24,7 +24,7 @@
       "patterns": [
         "*.pheno"
       ],
-      "help": ""
+      "help": "Path/hash to phenotype file."
     },
     {
       "name": "run_bolt",
@@ -32,7 +32,7 @@
       "class": "boolean",
       "optional": true,
       "default": false,
-      "help": ""
+      "help": "Run BOLT association testing [false]?"
     },
     {
       "name": "run_regenie",
@@ -40,7 +40,7 @@
       "class": "boolean",
       "optional": true,
       "default": false,
-      "help": ""
+      "help": "Do not use – deprecated!"
     },
     {
       "name": "run_saige",
@@ -48,7 +48,7 @@
       "class": "boolean",
       "optional": true,
       "default": false,
-      "help": ""
+      "help": "Run SAIGE association testing [false]?"
     },
     {
       "name": "run_staar",
@@ -56,7 +56,7 @@
       "class": "boolean",
       "optional": true,
       "default": false,
-      "help": ""
+      "help": "Run STAAR association testing [false]?"
     },
     {
       "name": "run_linear_model",
@@ -64,14 +64,14 @@
       "class": "boolean",
       "optional": true,
       "default": false,
-      "help": ""
+      "help": "Run linear model association testing [false]?"
     },
     {
       "name": "is_binary",
       "label": "Is the phenotype binary?",
       "class": "boolean",
       "optional": false,
-      "help": ""
+      "help": "Is the phenotype binary (true/false)?"
     },
     {
       "name": "sex",
@@ -100,7 +100,7 @@
       "patterns": [
         "*.tar.gz"
       ],
-      "help": ""
+      "help": "Output tarball with association stats"
     }
   ],
   "runSpec": {

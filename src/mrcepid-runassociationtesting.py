@@ -75,7 +75,7 @@ def ingest_data(association_tarball: str, phenofile: str) -> str:
 
 
 # Do covariate processing and sample inclusion/exclusion
-def process_covariates(sex):
+def process_covariates(sex: int) -> str:
 
     # First write individuals that we are going to exclude (bolt requires this):
     # And get a list of individuals that we are NOT going to use
@@ -183,12 +183,14 @@ def process_covariates(sex):
     return pheno_name # Return the phenotype name so we can use it later
 
 
-def bolt(tarball_prefix, pheno_name):
+# Run rare variant association testing using BOLT
+def bolt(tarball_prefix: str, pheno_name: str) -> None:
 
     # Need to pare down the bgen file to samples being tested
     cmd = "plink2 --bgen /test/PTV.BOLT.bgen 'ref-last' --sample /test/PTV.BOLT.sample --export bgen-1.2 'bits='8 --out /test/bolt_input --keep-fam /test/SAMPLES_Include.txt"
     run_cmd(cmd, True)
 
+    # See the README.md for more information on these parameters
     cmd = "bolt " + \
           "--bfile=/test/genetics/UKBB_200K_Autosomes_QCd_WBA " \
           "--exclude=/test/genetics/UKBB_200K_Autosomes_QCd.low_MAC.snplist " \
@@ -212,7 +214,8 @@ def bolt(tarball_prefix, pheno_name):
     run_cmd(cmd, True)
 
 
-def regenie(tarball_prefix, pheno_name, is_binary):
+# Run rare variant association testing using REGENIE (WARNING: DEPRECATED)
+def regenie(tarball_prefix: str, pheno_name: str, is_binary: bool) -> None:
 
     # Run initial model fitting for REGNIE
     cmd = "regenie " \
@@ -260,8 +263,10 @@ def regenie(tarball_prefix, pheno_name, is_binary):
     run_cmd(cmd, True)
 
 
-def saige(tarball_prefix, pheno_name, is_binary, sex):
+# Run rare variant association testing using SAIGE-GENE
+def saige(tarball_prefix: str, pheno_name: str, is_binary: bool, sex: int) -> None:
 
+    # See the README.md for more information on these parameters
     cmd = "step1_fitNULLGLMM.R " \
           "--plinkFile=/test/genetics/UKBB_200K_Autosomes_QCd_WBA " \
           "--phenoFile=/test/phenotypes_covariates.formatted.txt " \
@@ -287,12 +292,13 @@ def saige(tarball_prefix, pheno_name, is_binary, sex):
         cmd = cmd + "--traitType=quantitative"
     run_cmd(cmd, True)
 
-    # Need to pare down tested samples to those in the covariate file:
+    # Need to pare down tested samples to those in the covariate file using bcftools:
     cmd = "bcftools view -S /test/SAMPLES_Include.txt -Oz -o /test/saige_input.vcf.gz /test/PTV.SAIGE.vcf.gz"
     run_cmd(cmd, True)
     cmd = "bcftools index /test/saige_input.vcf.gz"
     run_cmd(cmd, True)
 
+    # See the README.md for more information on these parameters
     cmd = "step2_SPAtests.R " \
           "--vcfFile=/test/saige_input.vcf.gz " \
           "--vcfField=GT " \
@@ -308,12 +314,13 @@ def saige(tarball_prefix, pheno_name, is_binary, sex):
     run_cmd(cmd, True)
 
 
-def staar(tarball_prefix, pheno_name, is_binary):
+# Run rare variant association testing using STAAR
+def staar(tarball_prefix: str, pheno_name: str, is_binary: bool) -> None:
 
     # I have made a custom script in order to run STAAR:
     # located in /usr/bin/runSTAAR.R
     # This generates a text output file of p.values
-
+    # See the README.md for more information on these parameters
     cmd = "Rscript /prog/runSTAAR.R " \
           "/test/" + tarball_prefix + ".STAAR.matrix.rds " \
           "/test/" + tarball_prefix + ".variants_table.STAAR.tsv " \
@@ -325,6 +332,7 @@ def staar(tarball_prefix, pheno_name, is_binary):
     run_cmd(cmd, True)
 
 
+#Run rare variant association testing using GLMs
 def linear_model(tarball_prefix, pheno_name, is_binary):
 
     # load covariates and phenotypes
@@ -342,15 +350,17 @@ def linear_model(tarball_prefix, pheno_name, is_binary):
         genes.append(gene.rstrip())
     genes_to_include.close()
 
-    #load genetic data
+    # load genetic data
     # first convert into format we can use:
     cmd = "plink2 --bgen /test/" + tarball_prefix + ".BOLT.bgen 'ref-last' --export bcf --out /test/lm"
     run_cmd(cmd, True)
+    # This just makes a sparse matrix with columns: sample_id, gene name, genotype
     cmd = "bcftools query -i \"GT='alt'\" -f \"[%SAMPLE\t%ID\t%GT\n]\" /test/lm.bcf > lm.tsv"
     run_cmd(cmd, True)
     geno_table = pd.read_csv("lm.tsv",
                              sep = "\t",
                              names = ['eid', 'gene', 'gt'])
+    # VCF stores samples in eid_eid format, so get just the first eid
     geno_table[['eid','eid2']] = geno_table['eid'].str.split('_', 1, expand=True)
     geno_table = geno_table.drop('eid2', axis=1)
 
@@ -369,7 +379,8 @@ def linear_model(tarball_prefix, pheno_name, is_binary):
     pheno_covars = pheno_covars.loc[includes]
 
     # Now successively iterate through each gene and run our model:
-    results_dict = {}
+    # I think this is straight forward?
+    results_dict = {} #This makes a dictionary for us to store each gene
     if is_binary:
         family = sm.families.Binomial()
     else:
@@ -409,9 +420,7 @@ def main(association_tarball, run_bolt, run_staar, run_regenie, run_saige, run_l
 
     # To-dos:
     # 1. Make some sort of smart thread-setter...
-    # 2. Add ability to injest custom phenotype file
-    # 3. Add ability to modify input covariates (static at the moment)
-    # 4. Add sex-specific analysis flag
+    # 2. Add ability to modify input covariates (static at the moment)
 
     if run_bolt is False and run_staar is False and run_regenie is False and run_saige is False and run_linear_model is False:
         raise Exception("No models were selected for execution!")
@@ -420,10 +429,15 @@ def main(association_tarball, run_bolt, run_staar, run_regenie, run_saige, run_l
     cmd = "docker pull egardner413/mrcepid-associationtesting:latest"
     run_cmd(cmd)
 
+    # Grab the data necessary to run this:
     tarball_prefix = ingest_data(association_tarball, phenofile)
-    pheno_name = process_covariates(sex) # This does covariate processing for all pipelines regardless of what we need to run
+
+    # This does covariate processing for all pipelines regardless of what we need to run
+    # Also returns the phenotype name we are going to test
+    pheno_name = process_covariates(sex)
     print("Phenotype: " + pheno_name)
 
+    # Run models that were selected
     output_files = [] # Create a list of outputs to drop into the tarball later
     if run_bolt:
         print("Running BOLT")

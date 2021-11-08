@@ -624,7 +624,16 @@ output_tarball is either named `assoc_stats.tar.gz` by default. If the parameter
 
 `PTV.assoc_stats.tar.gz`
 
-Would be created.
+Would be created. This tar.gz file will contain files that are specific to the tool that was requested, but at most can contain 6 files:
+
+1. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
+2. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
+3. `<file_prefix>.STAAR_results.tsv` (STAAR output)
+4. `<file_prefix>.bgen.stats.gz` (BOLT output)
+5. `<file_prefix>.stats.gz` (BOLT output)
+6. `<file_prefix>.lm_stats.tsv` (GLM output)
+
+Please see each tool's respective output section for more information on these outputs.
 
 ### Command line example
 
