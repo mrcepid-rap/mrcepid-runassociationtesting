@@ -1,0 +1,137 @@
+{
+  "name": "mrcepid-runassociationtesting",
+  "title": "RunAssociationTesting",
+  "summary": "Runs rare variant burden testing with various tools",
+  "dxapi": "1.0.0",
+  "version": "0.0.2",
+  "openSource": true,
+  "inputSpec": [
+    {
+      "name": "association_tarball",
+      "label": "tarball of output from 'mergecollapsevariants'",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*.tar.gz"
+      ],
+      "help": ""
+    },
+    {
+      "name": "phenofile",
+      "label": "file with phenotype for association testing",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*.pheno"
+      ],
+      "help": ""
+    },
+    {
+      "name": "run_bolt",
+      "label": "Run BOLT association testing [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": ""
+    },
+    {
+      "name": "run_regenie",
+      "label": "Run REGENIE association testing [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": ""
+    },
+    {
+      "name": "run_saige",
+      "label": "Run SAIGE association testing [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": ""
+    },
+    {
+      "name": "run_staar",
+      "label": "Run STAAR association testing [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": ""
+    },
+    {
+      "name": "run_linear_model",
+      "label": "Run linear model association testing [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": ""
+    },
+    {
+      "name": "is_binary",
+      "label": "Is the phenotype binary?",
+      "class": "boolean",
+      "optional": false,
+      "help": ""
+    },
+    {
+      "name": "sex",
+      "label": "Run only one sex or both sexes (0 = female, 1 = male, 2 = both) [2]?",
+      "class": "int",
+      "optional": true,
+      "default": 2,
+      "choices": [0,1,2],
+      "help": "Run only one sex or both sexes (0 = female, 1 = male, 2 = both) [2]?"
+    },
+    {
+      "name": "output_prefix",
+      "label": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'"
+    }
+  ],
+  "outputSpec": [
+    {
+      "name": "output_tarball",
+      "label": "Output tarball with association stats",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*.tar.gz"
+      ],
+      "help": ""
+    }
+  ],
+  "runSpec": {
+    "timeoutPolicy": {
+      "*": {
+        "hours": 24
+      }
+    },
+    "interpreter": "python3",
+    "file": "src/mrcepid-runassociationtesting.py",
+    "distribution": "Ubuntu",
+    "release": "20.04",
+    "version": "0",
+    "execDepends": [
+      {"name": "pandas",
+        "package_manager": "pip"},
+      {"name": "statsmodels",
+      "package_manager":  "pip"}
+    ]
+  },
+  "access": {
+    "network": ["*"],
+    "allProjects": "VIEW"
+  },
+  "regionalOptions": {
+    "aws:eu-west-2": {
+      "systemRequirements": {
+        "*": {
+          "instanceType": "mem1_ssd1_v2_x36"
+        }
+      }
+    }
+  }
+}
