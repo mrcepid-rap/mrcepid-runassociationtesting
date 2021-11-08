@@ -694,6 +694,7 @@ it is recommended to change instance type to save money. Do this by providing th
 | GLM | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:green">**TRUE**</span> | 0.1hrs | £0.01‡ |
 
 §Numbers are representative runtimes and cost for a real analysis using two VCF slices on the effect of rare variant burden on having type II diabetes. 
+
 ‡Cost for STAAR and GLM is using smaller instances (`mem1_ssd1_v2_x8`).
 
 #### Batch Running
