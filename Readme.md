@@ -6,7 +6,39 @@ https://documentation.dnanexus.com/.
 
 ### Table of Contents
 
-
+- [Introduction](#introduction)
+   * [Background](#background)
+      + [1. BOLT-LMM](#1-bolt-lmmhttpsalkesgroupbroadinstituteorgbolt-lmmbolt-lmm_manualhtml)
+      + [2. SAIGE-GENE](#2-saige-genehttpsgithubcomweizhouumichsaige)
+      + [3. STAAR](#3-staarhttpsgithubcomxihaolistaar)
+      + [4. Generalised Linear Models (GLMs)](#4-generalised-linear-models-glms)
+   * [Dependencies](#dependencies)
+      + [Docker](#docker)
+      + [Resource Files](#resource-files)
+- [Methodology](#methodology)
+   * [Covariate processing](#covariate-processing)
+   * [BOLT](#bolt)
+      + [Inputs](#inputs)
+      + [Command Line Example](#command-line-example)
+      + [Outputs](#outputs)
+   * [SAIGE-GENE](#saige-gene)
+      + [Inputs](#inputs-1)
+      + [Command Line Example](#command-line-example-1)
+      + [Outputs](#outputs-1)
+   * [STAAR](#staar)
+      + [Inputs](#inputs-2)
+      + [Command line example](#command-line-example)
+      + [Outputs](#outputs-2)
+   * [GLMs](#glms)
+      + [Inputs](#inputs-3)
+      + [Command line example](#command-line-example-1)
+      + [Outputs](#outputs-3)
+- [Running on DNANexus](#running-on-dnanexus)
+   * [Inputs](#inputs-4)
+   * [Outputs](#outputs-4)
+   * [Command line example](#command-line-example-2)
+      + [Runtime Examples, System Requirements, and Output Expectations](#runtime-examples--system-requirements--and-output-expectations)
+      + [Batch Running](#batch-running)
 
 ## Introduction
 
