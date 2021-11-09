@@ -37,7 +37,7 @@ https://documentation.dnanexus.com/.
    * [Inputs](#inputs-4)
    * [Outputs](#outputs-4)
    * [Command line example](#command-line-example-2)
-      + [Runtime Examples, System Requirements, and Output Expectations](#runtime-examples--system-requirements--and-output-expectations)
+      + [Runtime Examples, System Requirements, and Output Expectations](#runtime-examples-system-requirements-and-output-expectations)
       + [Batch Running](#batch-running)
 
 ## Introduction
