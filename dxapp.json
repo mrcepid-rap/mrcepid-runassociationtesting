@@ -67,6 +67,14 @@
       "help": "Run linear model association testing [false]?"
     },
     {
+      "name": "run_all",
+      "label": "Run ALL association testing tools [false]?",
+      "class": "boolean",
+      "optional": true,
+      "default": false,
+      "help": "Run ALL association testing tools. Will over-ride settings for all other 'run_*' settings"
+    },
+    {
       "name": "is_binary",
       "label": "Is the phenotype binary?",
       "class": "boolean",
@@ -83,12 +91,42 @@
       "help": "Run only one sex or both sexes (0 = female, 1 = male, 2 = both) [2]?"
     },
     {
+      "name": "exclusion_list",
+      "label": "File of individual IDs to exclude from regression analyses.",
+      "class": "file",
+      "optional": true,
+      "default": null,
+      "patterns": [
+        "*.txt"
+      ],
+      "help": "File of individual IDs to exclude from analyses. Do not use the command to exclude individuals by sex!"
+    },
+    {
+      "name": "inclusion_list",
+      "label": "File of individual IDs to include in regression analyses.",
+      "class": "file",
+      "optional": true,
+      "default": null,
+      "patterns": [
+        "*.txt"
+      ],
+      "help": "File of individual IDs to include in regression analyses."
+    },
+    {
       "name": "output_prefix",
       "label": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'",
       "class": "string",
       "optional": true,
       "default": null,
       "help": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'"
+    },
+    {
+      "name": "threads",
+      "label": "number of threads available to this instance",
+      "class": "int",
+      "optional": true,
+      "default": 36,
+      "help": "Number of threads available to this instance."
     }
   ],
   "outputSpec": [

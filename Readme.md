@@ -275,8 +275,9 @@ when performing an association without specifying a sex on the [commandline](#in
 
 Covariates and samples are processed in the following steps:
 
-1. Generate an exclusion list of individuals NOT to be tested. This is **currently hardcoded** to exclude all related, non-European 
-   genetic ancestry individuals. How this file was generated is described in detail as part of [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms#1-selecting-individuals).
+1. Generate an exclusion list of individuals NOT to be tested by limiting to/keeping samples in the files provided to 
+   input parameters `inclusion_list`/`exclusion_list`. Three such files are provided as part of this prject. How these files
+   were generated is described in detail as part of [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms#1-selecting-individuals).
 
 2. Subset to individuals retained AFTER filtering genotying data and selecting for individuals who have whole exome sequencing.
    How this file was generated is described in detail as part of [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms#methodology).
@@ -620,16 +621,20 @@ We output a single tab-delimited file with the following columns (`<file_prefix>
 |---- |------------------------|
 |association_tarball  | Path/hash ID of the output from [mrcepid-mergecollapsevariants](https://github.com/mrcepid-rap/mrcepid-mergecollapsevariants) that you wish to use for rare variant burden testing. |
 |phenofile | Phenotypes file – see below for more information on the format of this file |
-|run_bolt    | run BOLT? Default: FALSE |
-|run_regenie | run REGENIE? Default: FALSE. **WARNING** Using this option currently does nothing as REGENIE is not properly implemented |
-|run_saige   | run SAIGE? Default: FALSE |
-|run_staar   | run STAAR? Default: FALSE |
-|run_linear_model   | run GLMs? Default: FALSE |
+|run_bolt    | run BOLT? **[FALSE]** |
+|run_regenie | run REGENIE? **WARNING** Using this option currently does nothing as REGENIE is not properly implemented! **[FALSE]**. |
+|run_saige   | run SAIGE? **[FALSE]** |
+|run_staar   | run STAAR? **[FALSE]** |
+|run_linear_model   | run GLMs? **[FALSE]** |
+|run_all | run all of the above (exclusing regenie) **[FALSE]** |
 |is_binary   | Is the given trait in the phenofile binary? |
-|sex   | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) [2]? |
+|sex   | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**? |
+|inclusion_list | List of samples (eids) to include in analysis **[None]** |
+|exclusion_list | List of samples (eids) to exclude in analysis **[None]** |
 |output_prefix   | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz' |
+|threads     | Number of threads available to this instance **[36]** |
 
-**Phenotypes File**
+#### Phenotypes File
 
 A tab-delimited file with three columns and a header. Column 1 and 2 **MUST** be named FID and IID in that order. Column 3 can
 have any non-whitespace name (`pheno_name` below) that represents the phenotype that you want to test. The applet automatically 
@@ -645,6 +650,18 @@ FID IID pheno_name
 1000003 1000003 0
 1000003 1000003 NA
 ```
+
+#### Inclusion / Exclusion lists
+
+These files are single-row .txt files with one eid per line. I have created three files already, but any file that 
+conforms to the proper format can be used. The following files are already available on the RAP and have already been 
+restricted to samples that have WES:
+
+| name | file ID | description | list length |
+| ---- | ------- | ----------- | ----------- |
+| EXCLUDEFOR_Relateds.txt | file-G6qXvkjJ2vfY7yF74VVPG7xg | List of related individuals (all ancestries) | 65,575 |
+| EXCLUDEFOR_White_Euro_Relateds.txt | file-G6qXvj8J2vfz37qZ4ZPf7p2Z | List of related and NON-european ancestry individuals | 96,271 |
+| KEEPFOR_White_Euro.txt | file-G6qXvjjJ2vfQGPp04ZGf6ygj | List of all European ancestry individuals (including related) | 421,839 |
 
 ### Outputs
 
