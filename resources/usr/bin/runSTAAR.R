@@ -42,33 +42,40 @@ variants <- merge(variants, annotations, by = "chrID")
 # Load covariates:
 data_for_STAAR <- fread(covariates_file)
 
+# Load GRM:
+sparse_kinship <- readMM("/test/genetics/sparseGRM_450K_Autosomes_QCd_relatednessCutoff_0.125_2000_randomMarkersUsed.sparseGRM.mtx")
+sparse_kinship_samples <- fread("/test/genetics/sparseGRM_450K_Autosomes_QCd_relatednessCutoff_0.125_2000_randomMarkersUsed.sparseGRM.mtx.sampleIDs.txt")
+rownames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
+colnames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
+
 # Build data table for STAAR
 # Remember! Not necessary to exclude individuals from the covariate / phenotype file as we take care of that in the main applet code
-data.cols <- c("FID", "age", "batch", "sex", paste0("PC", seq(1,10)), pheno_name)
+data.cols <- c("FID", "age", "batch", "wes_batch", "sex", paste0("PC", seq(1,10)), pheno_name)
 data_for_STAAR <- data_for_STAAR[,..data.cols]
 data_for_STAAR[,FID:=as.character(FID)]
 
-# Trim the genotypes down to individuals included in the covariate file:
+# Trim the genotypes/sparse kinship mtx down to individuals included in the covariate file:
 poss <- rownames(genotypes) # this gets possible individuals in the genotype matrix
 poss <- poss[poss %in% data_for_STAAR[,FID]] # Subset to those samples that exist in the covariate / pheno file
 genotypes <- genotypes[poss, 1:ncol(genotypes)] # And then use that list to pare down the genotype matrix
 data_for_STAAR <- data_for_STAAR[FID %in% poss] # Just make sure everything is the same between the genotype matrix and covariate / pheno file
-genotypes <- genotypes[data_for_STAAR[,FID],1:ncol(genotypes)] # This sorts the genotype matrix so it lines up with the covariate / pheno data frame:
+genotypes <- genotypes[data_for_STAAR[,FID],1:ncol(genotypes)] # This sorts the genotype matrix so it lines up with the covariate / pheno data frame
+sparse_kinship <- sparse_kinship[data_for_STAAR[,FID],data_for_STAAR[,FID]] # Pares down the GRM to the same individuals in the covariate / pheno data frame
 
 # Fit the null model for STAAR:
 # These lines just autoformat our formula for association testing
 if (length(unique(data_for_STAAR[,sex])) == 1) {
-  covariates <- c("age","batch",paste0("PC",seq(1,10)))
+  covariates <- c("age","batch","wes_batch",paste0("PC",seq(1,10)))
 } else {
-  covariates <- c("age","sex","batch",paste0("PC",seq(1,10)))
+  covariates <- c("age","sex","batch","wes_batch",paste0("PC",seq(1,10)))
 }
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
 # And run either a linear or logistic model according to is_binary
 if (is_binary) {
-  obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+  obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
 } else {
-  obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="gaussian")
+  obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=gaussian(link="identity"), kins = sparse_kinship)
 }
 # Get list of all possible genes and make a data.table to iterate through:
 poss.genes <- unique(variants[,GENEID])

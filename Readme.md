@@ -294,11 +294,12 @@ Individual rare variant burden tests are then run according to [user input](#inp
 
 ### BOLT
 
-BOLT roughly proceedes in two steps. First, BOLT computes a genetic relatedness matrix (GRM) from genetic data curated during
+BOLT roughly proceeds in two steps. First, BOLT computes a genetic relatedness matrix (GRM) from genetic data curated during
 the previous step of this applet. Next, it tests for the association a variant provided in a bgen file for an association
 with the phenotype of interest. Normally, this bgen file is a collection of phased SNP data from genotying chips. Here,
 we have created a "dummy" bgen file that instead encodes presence/absence of a qualifying variant per-individual. This dummy
-variable is then used by BOLT to test for an association with a given phenotype.
+variable is then used by BOLT to test for an association with a given phenotype. We test for both per-gene and per-marker 
+(i.e. SNV/InDels) association with our phenotype of interest.
 
 #### Inputs
 
@@ -321,8 +322,8 @@ qualifying variant in Gene1, and 1000003 has a qualifying variant in Gene2. An a
 is provided with this of the format:
 
 ```text
-chr1 ENSG000000001 0 1000000
-chr1 ENSG000000002 0 2000000
+chr1 ENST000000001 0 1000000
+chr1 ENST000000002 0 2000000
 ```
 
 This file is then converted to .bed using plink2 and then .bgen 1.2 8-bit format using plink2:
@@ -331,6 +332,11 @@ This file is then converted to .bed using plink2 and then .bgen 1.2 8-bit format
 plink --make-bed --file <file_prefix>.BOLT --out <file_prefix>.BOLT
 plink2 --export bgen-1.2 'bits='8 --bfile <file_prefix>.BOLT --out <file_prefix>.BOLT"
 ```
+
+The above steps are done per-chromosome and provided via the `--bgenSamplesFileList` argument as described below.
+
+To perform per-marker tests, we simply convert the VCF file used for [SAIGE](#saige-gene) into bgen format using plink2, 
+and run exactly the same as described below. Inputs and outputs are essentially identical. 
 
 #### Command Line Example
 
@@ -342,6 +348,7 @@ bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                      
         --covarFile=phenotypes_covariates.formatted.txt /                        # BOLT requires you to provide this twice...
         --covarCol=batch /                                                       # batch is field 22000, we provide here as a categorical variable (covarCol)
         --covarCol=sex /                                                         # sex as a categorical variable
+        --covarCol=wes_batch /                                                   # Batch a given individual's WES is derived from (50k / 200k / 450k) 
         --qCovarCol=age /                                                        # age as a continuous variable
         --qCovarCol=PC{1:10} /                                                   # First 10 principal components as a continuous variable
         --covarMaxLevels=110 /                                                   # Since there are 110 batches of arrays (batch), we have to tell BOLT to allow for more categorical bins
@@ -351,8 +358,7 @@ bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                      
         --numThreads=32 /                                                        # Number of threads
         --statsFile=<file_prefix>.tarball_prefix.stats.gz /                      # This sets the output file of basic stats
         --verboseStats /                                                         # Give verbose stats
-        --bgenFile=bolt_input.bgen /                                             # This is the bgen dummy file we create above
-        --sampleFile=bolt_input.sample /                                         # and the associated .sample file
+        --bgenSampleFileList=bolt_input.bgen /                                   # This is a list (one file for each chromosome) of dummy bgen files created above
         --statsFileBgenSnps=<file_prefix>.bgen.stats.gz                          # output statistics for testing dummy variables
 ```
 
@@ -360,10 +366,10 @@ bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                      
 
 #### Outputs
 
-Two files that use the standard BOLT [output](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html#x1-470008):
+Two files per chromosome that use the standard BOLT [output](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html#x1-470008):
 
-1. For all SNPs listed in the file provided to --bfile - not particularly useful and provided for posterity (`<file_prefix>.stats.gz`)
-2. For all genes listed in the dummy bgen file provided to --bgenFile - the primary output of this applet for BOLT (`<file_prefix>.bgen.stats.gz`)
+1. For all SNPs listed in the file provided to --bfile - not particularly useful and provided for posterity (`<file_prefix>.<chr>.stats.gz`)
+2. For all genes listed in the dummy bgen file provided to --bgenFile - the primary output of this applet for BOLT (`<file_prefix>.<chr>.bgen.stats.gz`)
 
 ### SAIGE-GENE
 
@@ -388,15 +394,17 @@ are variants we want to test for that gene. Variant ID is represented as the VCF
 column.
 
 ```text
-ENSG000000001 1:1000000_A/T 1:1000010_T/G   1:1000020_G/A
-ENSG000000002 1:2000000_G/C 1:2000030_A/C   1:2000050_ATC/A 1:2000000_G/GATC 
+ENST000000001 1:1000000_A/T 1:1000010_T/G   1:1000020_G/A
+ENST000000002 1:2000000_G/C 1:2000030_A/C   1:2000050_ATC/A 1:2000000_G/GATC 
 ```
+
+Files are created per-chromosome to enable faster parallelization on DNA Nexus.
 
 #### Command Line Example
 
 SAIGE-GENE proceedes in two steps:
 
-1. Fitting the null GLMM (slow):
+1. Fitting the null GLMM (slow and done for the whole genome):
 
 ```commandline
 step1_fitNULLGLMM.R
@@ -420,34 +428,35 @@ step1_fitNULLGLMM.R
 
 **Note:** I have shortened the name of the sparseGRMFile for readability (see source code).
 
-2. Performing rare variant burden tests (fast):
+2. Performing rare variant burden tests (fast and done per chromosome):
 
 ```commandline
 step2_SPAtests.R
-          --vcfFile=saige_input.vcf.gz \                                # Input vcf file I document above
-          --vcfField=GT \                                               # Hardcoded INFO field to check for presence absence in the vcf file
-          --GMMATmodelFile=SAIGE_OUT.rda \                              # File generated by step1 above
-          --varianceRatioFile=SAIGE_OUT_cate.varianceRatio.txt \        # File generated by step1 above
-          --LOCO=FALSE \                                                # Should we do leave-one-chrom-out (NO!)
-          --SAIGEOutputFile=<file_prefix>.SAIGE_OUT.SAIGE.gene.txt \    # Output file from this step
-          --groupFile=<file_prefix>.SAIGE.groupFile.txt \               # Input groupFile I document above
-          --sparseSigmaFile=SAIGE_OUT_cate.sparseSigma.mtx \            # File generated by step1 above
-          --IsSingleVarinGroupTest=TRUE \                               # Should we also test individual variants (YES!)
-          --MACCutoff_to_CollapseUltraRare=0.5 \                        # Minimum allele count to include a variant. 0.5 means we include all variants (even singletons)
-          --IsOutputBETASEinBurdenTest=TRUE                             # Should we output betas and std. errors (YES!)?
+          --vcfFile=saige_input.vcf.gz \                                   # Input vcf file I document above
+          --vcfField=GT \                                                  # Hardcoded INFO field to check for presence absence in the vcf file
+          --GMMATmodelFile=SAIGE_OUT.rda \                                 # File generated by step1 above
+          --varianceRatioFile=SAIGE_OUT_cate.varianceRatio.txt \           # File generated by step1 above
+          --LOCO=FALSE \                                                   # Should we do leave-one-chrom-out (NO!)
+          --SAIGEOutputFile=<file_prefix>.<chr>SAIGE_OUT.SAIGE.gene.txt \  # Output file from this step
+          --groupFile=<file_prefix>.<chr>.SAIGE.groupFile.txt \            # Input groupFile I document above
+          --sparseSigmaFile=SAIGE_OUT_cate.sparseSigma.mtx \               # File generated by step1 above
+          --IsSingleVarinGroupTest=TRUE \                                  # Should we also test individual variants (YES!)
+          --MACCutoff_to_CollapseUltraRare=0.5 \                           # Minimum allele count to include a variant. 0.5 means we include all variants (even singletons)
+          --IsOutputBETASEinBurdenTest=TRUE                                # Should we output betas and std. errors (YES!)?
 ```
 
 **Note:** I have shortened the name of the sparseSigmaFile for readability (see source code).
 
 #### Outputs
 
-Two tab-delimited files:
+Two tab-delimited files per-chromosome:
 
-1. Per-gene burden test summary statistics (`<file_prefix>.SAIGE_OUT.SAIGE.gene.txt`).
-2. Per-variant burden test summary statistics (`<file_prefix>.SAIGE_OUT.SAIGE.gene.txt_single`)
+1. Per-gene burden test summary statistics (`<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt`).
+2. Per-variant burden test summary statistics (`<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt_single`)
 
 The headers should be self-explanatory, but please see the [SAIGE documentation](https://github.com/weizhouUMICH/SAIGE/wiki/Genetic-association-tests-using-SAIGE#output-files-3)
-if you need more information.
+if you need more information. This tool also outputs the null model file (i.e. the primary output from SAIGE step1_fitNULLGLMM
+to allow for downstream re-use).
 
 ### STAAR
 
@@ -493,34 +502,41 @@ Column 4 is minor allele frequency.
 3. A tab-delimited file of gene annotations:
 
 ```text
-chr1:1000000:A:T    ENSG000000001   PTV
-chr1:1000010:T:G    ENSG000000001   PTV
-chr1:1000020:G:A    ENSG000000001   PTV
-chr1:2000000:G:C    ENSG000000002   PTV
-chr1:2000030:A:C    ENSG000000002   PTV
+chr1:1000000:A:T    ENST000000001   PTV
+chr1:1000010:T:G    ENST000000001   PTV
+chr1:1000020:G:A    ENST000000001   PTV
+chr1:2000000:G:C    ENST000000002   PTV
+chr1:2000030:A:C    ENST000000002   PTV
 ```
 
 Column 3 is the class of variant being tested.
 
+4. A sparse GRM. 
+
+Currently, we use the same GRM created for SAIGE as part of the [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms). 
+This input is currently hard-coded into the `runSTAAR.R` script.
+
 #### Command line example
 
-This example command-line is to run the script that we have created for this applet. All commands are just space delimited:
+This example command-line is to run the script that we have created for this applet for one chromosome. All commands are
+space delimited:
 
 ```commandline
 Rscript runSTAAR.R /                                     
-          <file_prefix>.STAAR.matrix.rds \              # File (1) from above
-          <file_prefix>.variants_table.STAAR.tsv \      # File (2) from above
-          <file_prefix>.REGENIE.annotation \            # File (3) from above – REGENIE is a legacy name and needs to be fixed
-          phenotypes_covariates.formatted.txt \         # formated phenotype + covariate file generated during step 1
-          <pheno_name> \                                # phenotype name extracted from the provided phenotype file
-          <file_prefix> \                               # prefix from mrcepid-mergecollapsevariants
-          is_binary                                     # Is this a binary trait? [TRUE/FALSE]
+          <file_prefix>.<chr>.STAAR.matrix.rds \              # File (1) from above
+          <file_prefix>.<chr>.variants_table.STAAR.tsv \      # File (2) from above
+          <file_prefix>.<chr>.REGENIE.annotation \            # File (3) from above – REGENIE is a legacy name and needs to be fixed
+          phenotypes_covariates.formatted.txt \               # formated phenotype + covariate file generated during step 1
+          <pheno_name> \                                      # phenotype name extracted from the provided phenotype file
+          <file_prefix> \                                     # prefix from mrcepid-mergecollapsevariants
+          <chr> \                                             # Current chromosome we are running to name output files
+          is_binary                                           # Is this a binary trait? [TRUE/FALSE]
 ```
 
 Please see the source code for the R script cited above, but in brief, we first fit a null model:
 
 ```r
-obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
 ```
 
 and then run a loop that tests the effect of having a rare variant on the given phenotype using STAAR:
@@ -536,9 +552,9 @@ for (gene in genes) {
 
 #### Outputs
 
-We output a single tab-delimited file with the following columns (`PTV.STAAR_results.tsv`):
+We output a single tab-delimited file per-chromosome with the following columns (`PTV.<chr>.STAAR_results.tsv`):
 
-1. geneID - ENSG ID of the gene being tested (e.g. ENSG00000001)
+1. geneID - ENST ID of the gene being tested (e.g. ENST00000001)
 2. n.samps – number of samples run through STAAR()
 3. staar.O.p – p. value based on SKAT-O
 4. n.var – Number of variants considered for this gene
@@ -566,16 +582,16 @@ bcftools query -i "GT='alt'" -f "[%SAMPLE\t%ID\t%GT\n]" lm.bcf > lm.tsv
 This command creates a tab-delimited file like:
 
 ```text
-1000000 ENSG000000001 0/1
-1000001 ENSG000000001 0/1
-1000003 ENSG000000002 0/1
+1000000 ENST000000001 0/1
+1000001 ENST000000001 0/1
+1000003 ENST000000002 0/1
 ```
 
 2. A list of genes to process:
 
 ```text
-ENSG000000001
-ENSG000000002
+ENST000000001
+ENST000000002
 ```
 
 #### Command line example
@@ -598,20 +614,20 @@ for gene in genes:
        family = sm.familes.Binomial()
     else:
        family = sm.families.Gaussian()
-       sm.GLM.from_formula(pheno_name + ' ~ has_var + sex + age + batch + PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10', 
+       sm.GLM.from_formula(pheno_name + ' ~ has_var + sex + age + batch + wes_batch + PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10', 
                            data=pheno_covars, 
                            family=family).fit()
 ```
 
 #### Outputs
 
-We output a single tab-delimited file with the following columns (`<file_prefix>.LM_results.tsv`):
+We output a single tab-delimited file per-chromosome with the following columns (`<file_prefix>.<chr>.LM_results.tsv`):
 
 1. p_val – raw p. value
 2. effect – beta / log OR
 3. std_err – standard error
 4. n_car – Number of individuals with a qualifying variant in the given gene
-1. gene - ENSG ID of the gene being tested (e.g. ENSG00000001)
+1. gene - ENST ID of the gene being tested (e.g. ENST00000001)
 
 ## Running on DNANexus
 
@@ -632,7 +648,7 @@ We output a single tab-delimited file with the following columns (`<file_prefix>
 |inclusion_list | List of samples (eids) to include in analysis **[None]** |
 |exclusion_list | List of samples (eids) to exclude in analysis **[None]** |
 |output_prefix   | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz' |
-|threads     | Number of threads available to this instance **[36]** |
+|threads     | Number of threads available to this instance **[32]** |
 
 #### Phenotypes File
 
@@ -673,14 +689,19 @@ output_tarball is either named `assoc_stats.tar.gz` by default. If the parameter
 
 `PTV.assoc_stats.tar.gz`
 
-Would be created. This tar.gz file will contain files that are specific to the tool that was requested, but at most can contain 6 files:
+Would be created. This tar.gz file will contain files that are specific to the tool that was requested. For all tools 
+other than bolt, per-chromosome files will be created for the outputs indicated with `<chr>`:
 
-1. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
-2. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
-3. `<file_prefix>.STAAR_results.tsv` (STAAR output)
-4. `<file_prefix>.bgen.stats.gz` (BOLT output)
-5. `<file_prefix>.stats.gz` (BOLT output)
-6. `<file_prefix>.lm_stats.tsv` (GLM output)
+1. `<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
+2. `<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt_single` (SAIGE-GENE per-marker output)
+3. `<file_prefix>.SAIGE_OUT.rda` (SAIGE-GENE null model file)
+4. `<file_prefix>.SAIGE_OUT_cate.varianceRatio.txt` (SAIGE-GENE null model file)
+5. `<file_prefix>.<chr>.STAAR_results.tsv` (STAAR output)
+6. `<file_prefix>.bgen.stats.gz` (BOLT output)
+7. `<file_prefix>.stats.gz` (BOLT output)
+8. `<file_prefix>.marker.bgen.stats.gz` (BOLT per-marker output)
+9. `<file_prefix>.marker.stats.gz` (BOLT per-marker output)
+10. `<file_prefix>.lm_stats.tsv` (GLM output)
 
 Please see each tool's respective output section for more information on these outputs.
 
@@ -730,14 +751,14 @@ dx run mrcepid-runassociationtesting --help
 
 I have set a sensible (and tested) default for compute resources on DNANexus for running BOLT and SAIGE. This is baked into the json used for building
 the app (at `dxapp.json`) so setting an instance type when running either of those tools or all tools at once is unnecessary.
-This current default is for a mem1_ssd1_v2_x36 instance (36 CPUs, 72 Gb RAM, 900Gb storage). If running either STAAR or GLMs
+This current default is for a mem2_ssd1_v2_x32 instance (32 CPUs, 128 Gb RAM, 1200Gb storage). If running either STAAR or GLMs
 it is recommended to change instance type to save money. Do this by providing the flag `--instance-type mem1_ssd1_v2_x8`.
 
 #### Runtime Examples, System Requirements, and Output Expectations
 
 | Tool | Per-gene p. value | Per-variant p. value | Accurate β / OR | Runtime§ | Cost§ |
 | ---- | ----------------- | -------------------- | --------------- | ------- | ---- |
-| BOLT | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:red">**FALSE**</span> | 2.5hrs | £0.58 |
+| BOLT | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:red">**FALSE**</span> | 2.5hrs | £0.58 |
 | SAIGE | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:red">**FALSE**</span> | 20hrs | £4.67 |
 | STAAR | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:red">**FALSE**</span> / <span style="color:red">**FALSE**</span> | 0.1hrs | £0.01‡ |
 | GLM | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:green">**TRUE**</span> | 0.1hrs | £0.01‡ |
