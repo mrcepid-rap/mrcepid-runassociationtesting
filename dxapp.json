@@ -27,6 +27,33 @@
       "help": "Path/hash to phenotype file."
     },
     {
+      "name": "covarfile",
+      "label": "file with additional covariates for association testing",
+      "class": "file",
+      "optional": true,
+      "default": null,
+      "patterns": [
+        "*.covariates"
+      ],
+      "help": "Path/hash to additional covariates file."
+    },
+    {
+      "name": "categorical_covariates",
+      "label": "Comma-delimited list of categorical covariates in covarfile (if any)",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. WES batch) in <covarfile>. Names MUST match column header. PLEASE NOTE that any covariates named with this option WILL BE IGNORED by SAIGE."
+    },
+    {
+      "name": "quantitative_covariates",
+      "label": "Comma-delimited list of quantitative covariates in covarfile (if any)",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) in <covarfile>. Names MUST match column header."
+    },
+    {
       "name": "run_bolt",
       "label": "Run BOLT association testing [false]?",
       "class": "boolean",
@@ -119,14 +146,6 @@
       "optional": true,
       "default": null,
       "help": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'"
-    },
-    {
-      "name": "threads",
-      "label": "number of threads available to this instance",
-      "class": "int",
-      "optional": true,
-      "default": 32,
-      "help": "Number of threads available to this instance."
     }
   ],
   "outputSpec": [

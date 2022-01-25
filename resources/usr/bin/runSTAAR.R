@@ -23,6 +23,8 @@ pheno_name = args[5]
 filename_prefix = args[6]
 chromosome = args[7]
 is_binary = as.logical(args[8])
+quant_covars = args[9]
+cat_covars = args[10]
 
 # Load RDS genotype matrix
 genotypes <- readRDS(matrix_file)
@@ -36,11 +38,26 @@ annotations <- fread(annotations_file, header = F)
 setnames(annotations,names(annotations), c("chrID", "GENEID", "VARTYPE"))
 
 # Merge with the variants file so we can use later:
-variants[,chrID:=paste0("chr", ID)]
+variants[,chrID:=paste0("chr", varID)]
 variants <- merge(variants, annotations, by = "chrID")
 
 # Load covariates:
 data_for_STAAR <- fread(covariates_file)
+
+# Set covariates and determine if there are additional covariates we need to consider:
+data.cols <- c("FID", "age", "age_squared", "wes_batch", "sex", paste0("PC", seq(1,10)), pheno_name)
+if (quant_covars != "NULL") {
+  quant_covars <- strsplit(quant_covars,",")[[1]]
+  data.cols <- c(data.cols, quant_covars)
+}
+
+if (cat_covars != "NULL") {
+  cat_covars <- strsplit(cat_covars, ",")[[1]]
+  data.cols <- c(data.cols, cat_covars)
+  for (covar in cat_covars) {
+    data_for_STAAR[,eval(col.id):=as.character(get(col.id))]
+  }
+}
 
 # Load GRM:
 sparse_kinship <- readMM("/test/genetics/sparseGRM_450K_Autosomes_QCd_relatednessCutoff_0.125_2000_randomMarkersUsed.sparseGRM.mtx")
@@ -50,7 +67,7 @@ colnames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 
 # Build data table for STAAR
 # Remember! Not necessary to exclude individuals from the covariate / phenotype file as we take care of that in the main applet code
-data.cols <- c("FID", "age", "batch", "wes_batch", "sex", paste0("PC", seq(1,10)), pheno_name)
+
 data_for_STAAR <- data_for_STAAR[,..data.cols]
 data_for_STAAR[,FID:=as.character(FID)]
 
@@ -65,9 +82,9 @@ sparse_kinship <- sparse_kinship[data_for_STAAR[,FID],data_for_STAAR[,FID]] # Pa
 # Fit the null model for STAAR:
 # These lines just autoformat our formula for association testing
 if (length(unique(data_for_STAAR[,sex])) == 1) {
-  covariates <- c("age","batch","wes_batch",paste0("PC",seq(1,10)))
+  covariates <- c("age", "age_squared","wes_batch",paste0("PC",seq(1,10)))
 } else {
-  covariates <- c("age","sex","batch","wes_batch",paste0("PC",seq(1,10)))
+  covariates <- c("age", "age_squared","sex","wes_batch",paste0("PC",seq(1,10)))
 }
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
@@ -99,17 +116,24 @@ staar.gene <- function(gene) {
   # Only run STAAR if there is greater than one non-ref variant
   if (tot_vars > 1) {
     staar_result <- STAAR(genotype = current_GENE, obj_nullmodel = obj_nullmodel, rare_maf_cutoff = 1)
-    return(list(staar_result$results_STAAR_O, tot_vars, cMAC))
+    return(list(staar_result$results_STAAR_O,
+                staar_result$results_STAAR_S_1_25[[1]],
+                staar_result$results_STAAR_B_1_1[[1]],
+                staar_result$results_STAAR_A_1_25[[1]],
+                tot_vars,
+                cMAC))
   } else {
     # Else just return NaN to indicate the test was not run
-    return(list(NaN, tot_vars, cMAC))
+    return(list(NaN, NaN, NaN, NaN, tot_vars, cMAC))
   }
   
 }
 
 # This just uses data.frame functionality to run the function staar.gene on each row of the table (i.e. each gene)
-gene.results[,c("staar.O.p","n.var","cMAC","n.var.calc","cMAC.calc"):=staar.gene(geneID),by=1:nrow(gene.results)]
+gene.results[,c("staar.O.p","staar.SKAT.p","staar.burden.p","staar.ACAT.p","n.var","cMAC","n.var.calc","cMAC.calc"):=staar.gene(geneID),by=1:nrow(gene.results)]
 
 # And write the final output table
 fwrite(gene.results, paste0("/test/", paste(filename_prefix, chromosome, "STAAR_results.tsv", sep = ".")), sep = "\t", quote = F, row.names = F, col.names = T, na = "NaN")
 
+# And the null model...
+saveRDS(object = obj_nullmodel, file = paste0("/test/", paste(filename_prefix, chromosome, "STAAR_null.rds", sep = ".")))

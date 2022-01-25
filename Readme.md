@@ -336,7 +336,7 @@ plink2 --export bgen-1.2 'bits='8 --bfile <file_prefix>.BOLT --out <file_prefix>
 The above steps are done per-chromosome and provided via the `--bgenSamplesFileList` argument as described below.
 
 To perform per-marker tests, we simply convert the VCF file used for [SAIGE](#saige-gene) into bgen format using plink2, 
-and run exactly the same as described below. Inputs and outputs are essentially identical. 
+and run exactly the same command as described below. Inputs and outputs are essentially identical. 
 
 #### Command Line Example
 
@@ -366,10 +366,17 @@ bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                      
 
 #### Outputs
 
-Two files per chromosome that use the standard BOLT [output](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html#x1-470008):
+Four files that use the standard BOLT [output](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html#x1-470008):
 
-1. For all SNPs listed in the file provided to --bfile - not particularly useful and provided for posterity (`<file_prefix>.<chr>.stats.gz`)
-2. For all genes listed in the dummy bgen file provided to --bgenFile - the primary output of this applet for BOLT (`<file_prefix>.<chr>.bgen.stats.gz`)
+1. For all SNPs listed in the file provided to --bfile - not particularly useful and provided for posterity (`<file_prefix>.stats.gz`)
+2. For all genes listed in the dummy bgen file provided to --bgenFile - the primary output for per-gene tests of this applet for BOLT (`<file_prefix>.bgen.stats.gz`)
+3. For all SNPs listed in the file provided to --bfile (identical to file (1), above) - not particularly useful and provided for posterity (`<file_prefix>.markers.stats.gz`)
+4. For all markers listed in the bgen file provided to --bgenFile - the primary output for per-marker tests of this applet for BOLT (`<file_prefix>.markers.bgen.stats.gz`)
+
+Two log files:
+
+1. For per-marker tests (`<file_prefix>.BOLT.markers.log`)
+2. For per-gene tests (`<file_prefix>.BOLT.log`)
 
 ### SAIGE-GENE
 
@@ -404,7 +411,7 @@ Files are created per-chromosome to enable faster parallelization on DNA Nexus.
 
 SAIGE-GENE proceedes in two steps:
 
-1. Fitting the null GLMM (slow and done for the whole genome):
+1. Fitting the null GLMM (done for the whole genome):
 
 ```commandline
 step1_fitNULLGLMM.R
@@ -423,12 +430,13 @@ step1_fitNULLGLMM.R
           --IsSparseKin=TRUE /                                               # Do we provide a sparse GRM (YES!)
           --isCateVarianceRatio=TRUE /                                       # Should be compute CATE variance ratios of rare variants?
           --covarColList=PC1,PC2,PC3,PC4,PC5,PC6,PC7,PC8,PC9,PC10,age,sex /  # Covariates to control for. Note – Sex is excluded when testing one sex (see source code)
-          --traitType=binary/quantitative                                    # set according to type of trait as provided by user
+          --traitType=binary/quantitative \                                  # set according to type of trait as provided by user
+          --useSparseGRMtoFitNULL=TRUE                                       # Use the sparse GRM to fit the null model rather than estimating the variance ratio from genetic data (massively improves runtime)
 ```
 
 **Note:** I have shortened the name of the sparseGRMFile for readability (see source code).
 
-2. Performing rare variant burden tests (fast and done per chromosome):
+2. Performing rare variant burden tests (done per chromosome):
 
 ```commandline
 step2_SPAtests.R
@@ -454,7 +462,9 @@ Two tab-delimited files per-chromosome:
 1. Per-gene burden test summary statistics (`<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt`).
 2. Per-variant burden test summary statistics (`<file_prefix>.<chr>.SAIGE_OUT.SAIGE.gene.txt_single`)
 
-The headers should be self-explanatory, but please see the [SAIGE documentation](https://github.com/weizhouUMICH/SAIGE/wiki/Genetic-association-tests-using-SAIGE#output-files-3)
+And a single log-file for step_1: `<file_prefix>.SAIGE_step1.log`
+
+The headers for the tab-delimited files should be self-explanatory, but please see the [SAIGE documentation](https://github.com/weizhouUMICH/SAIGE/wiki/Genetic-association-tests-using-SAIGE#output-files-3)
 if you need more information. This tool also outputs the null model file (i.e. the primary output from SAIGE step1_fitNULLGLMM
 to allow for downstream re-use).
 
@@ -556,9 +566,14 @@ We output a single tab-delimited file per-chromosome with the following columns 
 
 1. geneID - ENST ID of the gene being tested (e.g. ENST00000001)
 2. n.samps – number of samples run through STAAR()
-3. staar.O.p – p. value based on SKAT-O
-4. n.var – Number of variants considered for this gene
-5. cMAC – Cumulative minor allele count of all variants considered for this gene
+3. staar.O.p – Overall p. value
+4. staar.SKAT.p – SKAT p. value
+5. staar.burden.p – Burden p. value
+6. staar.ACAT.p ACAT-V p. value
+7. n.var – Number of variants considered for this gene
+8. cMAC – Cumulative minor allele count of all variants considered for this gene
+
+We also output the null model in RDS format (`PTV.<chr>.STAAR_null.rds`).
 
 ### GLMs
 
@@ -648,7 +663,6 @@ We output a single tab-delimited file per-chromosome with the following columns 
 |inclusion_list | List of samples (eids) to include in analysis **[None]** |
 |exclusion_list | List of samples (eids) to exclude in analysis **[None]** |
 |output_prefix   | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz' |
-|threads     | Number of threads available to this instance **[32]** |
 
 #### Phenotypes File
 
@@ -697,11 +711,12 @@ other than bolt, per-chromosome files will be created for the outputs indicated 
 3. `<file_prefix>.SAIGE_OUT.rda` (SAIGE-GENE null model file)
 4. `<file_prefix>.SAIGE_OUT_cate.varianceRatio.txt` (SAIGE-GENE null model file)
 5. `<file_prefix>.<chr>.STAAR_results.tsv` (STAAR output)
-6. `<file_prefix>.bgen.stats.gz` (BOLT output)
-7. `<file_prefix>.stats.gz` (BOLT output)
-8. `<file_prefix>.marker.bgen.stats.gz` (BOLT per-marker output)
-9. `<file_prefix>.marker.stats.gz` (BOLT per-marker output)
-10. `<file_prefix>.lm_stats.tsv` (GLM output)
+6. `<file_prefix>.1.STAAR_null.rds` (STAAR null model in .rds format)
+7. `<file_prefix>.bgen.stats.gz` (BOLT output)
+8. `<file_prefix>.stats.gz` (BOLT output)
+9. `<file_prefix>.marker.bgen.stats.gz` (BOLT per-marker output)
+10. `<file_prefix>.marker.stats.gz` (BOLT per-marker output)
+11. `<file_prefix>.lm_stats.tsv` (GLM output)
 
 Please see each tool's respective output section for more information on these outputs.
 
