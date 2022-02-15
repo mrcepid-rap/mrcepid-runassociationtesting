@@ -8,10 +8,10 @@ https://documentation.dnanexus.com/.
 
 - [Introduction](#introduction)
     * [Background](#background)
-        + [1. [BOLT-LMM](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html)](#1--bolt-lmm--https---alkesgroupbroadinstituteorg-bolt-lmm-bolt-lmm-manualhtml-)
-        + [2. [SAIGE-GENE](https://github.com/weizhouUMICH/SAIGE/)](#2--saige-gene--https---githubcom-weizhouumich-saige--)
-        + [3. [STAAR](https://github.com/xihaoli/STAAR)](#3--staar--https---githubcom-xihaoli-staar-)
-        + [4. Generalised Linear Models (GLMs)](#4-generalised-linear-models--glms-)
+        * [BOLT-LMM](#bolt-lmm)
+        * [SAIGE-GENE](#saige-gene)
+        * [STAAR](#staar)
+        * [Generalised Linear Models (GLMs)](#generalised-linear-models--glms-)
     * [Dependencies](#dependencies)
         + [Docker](#docker)
         + [Resource Files](#resource-files)
@@ -706,7 +706,8 @@ for gene in genes:
 `association_tarballs` takes a list file of DNANexus file-IDs that point to multiple outputs from the 'mergecollapsevariants'. 
 This file is one file-ID per line. This tool will use the file name to generate SNP IDs in the output files of the various tools.
 An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)`
-in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`.
+in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see
+the [high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information. 
 
 #### Phenotypes File
 
