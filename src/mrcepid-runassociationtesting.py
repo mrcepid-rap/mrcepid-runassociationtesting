@@ -44,7 +44,7 @@ def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None) -> None:
               "egardner413/mrcepid-associationtesting " + cmd
 
     # Standard python calling external commands protocol
-    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for stdout_line in iter(proc.stdout.readline, ""):
         yield stdout_line.decode('utf-8')
     proc.stdout.close()
@@ -666,7 +666,7 @@ def saige_step_one(association_pack: dict) -> None:
     else:
         cmd = cmd + "--traitType=quantitative"
     for line in run_cmd(cmd, True, association_pack['pheno_name'] + ".SAIGE_step1.log"):
-        print(line, end = "\n")
+        print(line, end = "")
 
 
 # This is a helper function to parallelise SAIGE step 2 by chromosome
