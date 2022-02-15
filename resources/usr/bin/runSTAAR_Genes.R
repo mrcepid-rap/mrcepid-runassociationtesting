@@ -16,26 +16,16 @@ library(data.table)
 args = commandArgs(trailingOnly = T)
 matrix_file = args[1]
 variants_file = args[2]
-annotations_file = args[3]
-null_model_file = args[4]
-pheno_name = args[5]
-filename_prefix = args[6]
-chromosome = args[7]
+null_model_file = args[3]
+pheno_name = args[4]
+filename_prefix = args[5]
+chromosome = args[6]
 
 # Load RDS genotype matrix
 genotypes <- readRDS(matrix_file)
 
 # Load list of variants
 variants <- fread(variants_file)
-variants[,rownum:=.I]
-
-# Load and use REGENIE annotations to get gene IDs for testing:
-annotations <- fread(annotations_file, header = F)
-setnames(annotations,names(annotations), c("chrID", "GENEID", "VARTYPE"))
-
-# Merge with the variants file so we can use later:
-variants[,chrID:=paste0("chr", varID)]
-variants <- merge(variants, annotations, by = "chrID")
 
 # Load the null model file:
 obj_nullmodel <- readRDS(null_model_file)
@@ -45,14 +35,14 @@ poss <- obj_nullmodel$id_include # this gets possible individuals from the null 
 genotypes <- genotypes[poss, 1:ncol(genotypes)] # And then use that list to pare down the genotype matrix
 
 # Get list of all possible genes and make a data.table to iterate through:
-poss.genes <- unique(variants[,GENEID])
+poss.genes <- unique(variants[,ENST])
 gene.results <- data.table(geneID=poss.genes, n.samps=nrow(genotypes), pheno=pheno_name, mask=filename_prefix)
 gene.results[,SNP:=paste(geneID,mask,sep="-")] # This sets an ID similar to BOLT to allow identical processing
 
 # This function just takes one gene and runs it through STAAR
 staar.gene <- function(gene) {
   # Grabs all columns in the genotype matrix that are for the given gene
-  current_GENE <- Matrix(genotypes[,variants[GENEID == gene, rownum]])
+  current_GENE <- Matrix(genotypes[,variants[ENST == gene, column]])
 
   # I don't exclude variants that don't exist in the subset of individuals with a given phenotype
   # So we have to check here how many variants we actually have for current_GENE

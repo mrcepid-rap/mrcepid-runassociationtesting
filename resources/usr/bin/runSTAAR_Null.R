@@ -27,6 +27,8 @@ data.cols <- c("FID", "age", "age_squared", "wes_batch", "sex", paste0("PC", seq
 if (quant_covars != "NULL") {
   quant_covars <- strsplit(quant_covars,",")[[1]]
   data.cols <- c(data.cols, quant_covars)
+} else {
+  quant_covars <- c()
 }
 
 if (cat_covars != "NULL") {
@@ -35,6 +37,8 @@ if (cat_covars != "NULL") {
   for (covar in cat_covars) {
     data_for_STAAR[,eval(col.id):=as.character(get(col.id))]
   }
+} else {
+  cat_covars <- c()
 }
 
 # Load GRM:
@@ -54,9 +58,9 @@ sparse_kinship <- sparse_kinship[data_for_STAAR[,FID],data_for_STAAR[,FID]] # Pa
 # Fit the null model for STAAR:
 # These lines just autoformat our formula for association testing
 if (length(unique(data_for_STAAR[,sex])) == 1) {
-  covariates <- c("age", "age_squared","wes_batch",paste0("PC",seq(1,10)))
+  covariates <- c("age", "age_squared","wes_batch",paste0("PC",seq(1,10)),quant_covars,cat_covars)
 } else {
-  covariates <- c("age", "age_squared","sex","wes_batch",paste0("PC",seq(1,10)))
+  covariates <- c("age", "age_squared","sex","wes_batch",paste0("PC",seq(1,10)),quant_covars,cat_covars)
 }
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
