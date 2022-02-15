@@ -45,19 +45,30 @@ def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None) -> None:
 
     # Standard python calling external commands protocol
     proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate()
-    if stdout_file is not None:
-        with open(stdout_file, 'w') as stdout_writer:
-            stdout_writer.write(stdout.decode('utf-8'))
-        stdout_writer.close()
-
-    # If the command doesn't work, print the error stream and close the AWS instance out with 'dxpy.AppError'
-    if proc.returncode != 0:
+    for stdout_line in iter(proc.stdout.readline, ""):
+        yield stdout_line.decode('utf-8')
+    proc.stdout.close()
+    return_code = proc.wait()
+    if return_code:
         print("The following cmd failed:")
         print(cmd)
         print("STDERROR follows\n")
-        print(stderr.decode('utf-8'))
+        print(proc.stderr.read)
         raise dxpy.AppError("Failed to run properly...")
+
+    # stdout, stderr = proc.communicate()
+    # if stdout_file is not None:
+    #     with open(stdout_file, 'w') as stdout_writer:
+    #         stdout_writer.write(stdout.decode('utf-8'))
+    #     stdout_writer.close()
+    #
+    # # If the command doesn't work, print the error stream and close the AWS instance out with 'dxpy.AppError'
+    # if proc.returncode != 0:
+    #     print("The following cmd failed:")
+    #     print(cmd)
+    #     print("STDERROR follows\n")
+    #     print(stderr.decode('utf-8'))
+    #     raise dxpy.AppError("Failed to run properly...")
 
 
 # This function is slightly different that in other applets I have designed. This function handles ALL inputs rather
@@ -654,7 +665,8 @@ def saige_step_one(association_pack: dict) -> None:
         cmd = cmd + "--traitType=binary"
     else:
         cmd = cmd + "--traitType=quantitative"
-    run_cmd(cmd, True, association_pack['pheno_name'] + ".SAIGE_step1.log")
+    for line in run_cmd(cmd, True, association_pack['pheno_name'] + ".SAIGE_step1.log"):
+        print(line, end = "\n")
 
 
 # This is a helper function to parallelise SAIGE step 2 by chromosome
