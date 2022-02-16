@@ -704,10 +704,25 @@ for gene in genes:
 #### Association Tarballs
 
 `association_tarballs` takes a list file of DNANexus file-IDs that point to multiple outputs from the 'mergecollapsevariants'. 
-This file is one file-ID per line. This tool will use the file name to generate SNP IDs in the output files of the various tools.
-An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)`
-in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see
-the [high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information. 
+This file is one file-ID per line, like:
+
+```text
+file-G7z31B0J6F3ZbpGK6J0y2xxF
+file-G7z2zP8JQy2PjKjY97Zvb3z9
+file-G7z2pXjJ91Jx1ZJ4335bX52Z
+file-G7z2gBjJ9ZpVqP3098X3xK6Y
+file-G7z2VZQJ845v91751z2k9v2B
+file-G7yv39QJPY6bYJKY9776JJBG
+file-G7yqY10JkX6Y4fzvJf80z7P6
+file-G7yq4ZjJV8qPjKjY97ZvZJ85
+file-G7ypg98Jq133zgzY1yVy8gFz
+```
+
+Where each line is a different mask. An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) 
+is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)` in project 
+`project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see the 
+[high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information on
+pre-collapsed variant files.. 
 
 #### Phenotypes File
 

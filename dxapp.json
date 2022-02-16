@@ -146,7 +146,32 @@
       "optional": true,
       "default": false,
       "help": "Run per-marker tests for requested tool(s) [false]? This could DRASTICALLY increase run-time."
-    }
+    },
+    {
+      "name": "bgen_index",
+      "label": "list of bgen files to collapse on",
+      "class": "file",
+      "optional": true,
+      "help": "list of bgen files and associated index/annotation",
+      "default": {
+        "$dnanexus_link": {
+          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
+          "id": "file-G86GJ3jJJv8fbXVB9PQ2pjz6"
+        }
+      }
+    },
+    {
+      "name": "transcript_index",
+      "label": "transcripts for annotation of association stats",
+      "class": "file",
+      "optional": true,
+      "help": "transcripts for annotation of association stats",
+      "default": {
+        "$dnanexus_link": {
+          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
+          "id": "file-G7xyzF8JJv8kyV7q5z8VV3Vb"
+        }
+      },
   ],
   "outputSpec": [
     {
@@ -186,7 +211,7 @@
     "aws:eu-west-2": {
       "systemRequirements": {
         "*": {
-          "instanceType": "mem2_ssd1_v2_x64"
+          "instanceType": "mem3_ssd1_v2_x64"
         }
       }
     }
