@@ -97,16 +97,16 @@ def ingest_data(association_tarballs: str, phenofile: str, covarfile: str, inclu
     bgen_dict = {}
     if run_bolt:
         # Import the VEP index of variants
-        vep_index = dxpy.DXFile('file-G81xQYjJJv8Q54493Bf8kB3g')
+        vep_index = dxpy.DXFile('file-G857Z4QJJv8x7GXfJ3y5v1qV')
         dxpy.download_dxfile(vep_index.get_id(), "450k_vep.sorted.tsv.gz")
         # Ingest the INDEX of bgen files:
-        bgen_index = dxpy.DXFile('file-G7z1yfjJJv8Q74k5Bb3V0Pj1')
+        bgen_index = dxpy.DXFile('file-G86GJ3jJJv8fbXVB9PQ2pjz6')
         dxpy.download_dxfile(bgen_index.get_id(), "bgen_locs.formatted.tsv")
         # and load it into a dict:
         os.mkdir("filtered_bgen/") # For downloading later...
         bgen_index_csv = csv.DictReader(open("bgen_locs.formatted.tsv", "r"), delimiter="\t")
         for chrom in bgen_index_csv:
-            bgen_dict[chrom['chrom']] = {'index': chrom['index_dxid'], 'sample': chrom['sample_dxid'], 'bgen': chrom['bgen_dxid']}
+            bgen_dict[chrom['chrom']] = {'index': chrom['bgen_index_dxid'], 'sample': chrom['sample_dxid'], 'bgen': chrom['bgen_dxid']}
 
     # Get transcripts for easy annotation:
     dxpy.download_dxfile(dxid = 'file-G7xyzF8JJv8kyV7q5z8VV3Vb',
