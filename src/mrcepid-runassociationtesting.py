@@ -122,7 +122,7 @@ def ingest_data(association_tarballs: str, phenofile: str, covarfile: str, inclu
                                          'sample': line['sample_dxid'],
                                          'bgen': line['bgen_dxid'],
                                          'vep': line['vep_dxid']}
-
+            
     # Check if additional covariates were provided:
     additional_covariates_found = False # default is we DID NOT find a file
     if covarfile is not None:
