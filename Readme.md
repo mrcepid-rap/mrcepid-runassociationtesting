@@ -682,32 +682,65 @@ for gene in genes:
 
 ### Inputs
 
-|input|description             |
-|---- |------------------------|
-|association_tarballs  | Hash ID(s) of the output from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants) that you wish to use for rare variant burden testing. See below for more information. |
-|phenofile | Phenotypes file – see below for more information on the format of this file |
-|run_bolt    | run BOLT? **[FALSE]** |
-|run_saige   | run SAIGE? **[FALSE]** |
-|run_staar   | run STAAR? **[FALSE]** |
-|run_linear_model   | run GLMs? **[FALSE]** |
-|run_all | run all of the above **[FALSE]** |
-|run_marker_tests| run SAIGE per-marker tests? **[FALSE]**|
-|is_binary   | Is the given trait in the phenofile binary? |
-|sex   | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**? |
-|inclusion_list | List of samples (eids) to include in analysis **[None]** |
-|exclusion_list | List of samples (eids) to exclude in analysis **[None]** |
-|output_prefix   | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz' |
-|covarfile | File containing additional covariates to correct for when running association tests |
-|categorical_covariates | comma-delimited list of categorical covariates found in covarfile to include in this model |
-|quantitative_covariates | comma-delimited file of quantitative covariates found in covarfile to include in this model |
+There are a standard set of command-line inputs that may be useful to change for the typical user. 
+
+| input                   | description                                                                                                                                                                                             |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| association_tarballs    | Hash ID(s) of the output from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants) that you wish to use for rare variant burden testing. See below for more information. |
+| phenofile               | Phenotypes file – see below for more information on the format of this file                                                                                                                             |
+| run_bolt                | run BOLT? **[FALSE]**                                                                                                                                                                                   |
+| run_saige               | run SAIGE? **[FALSE]**                                                                                                                                                                                  |
+| run_staar               | run STAAR? **[FALSE]**                                                                                                                                                                                  |
+| run_linear_model        | run GLMs? **[FALSE]**                                                                                                                                                                                   |
+| run_all                 | run all of the above **[FALSE]**                                                                                                                                                                        |
+| run_marker_tests        | run SAIGE per-marker tests? **[FALSE]**                                                                                                                                                                 |
+| is_binary               | Is the given trait in the phenofile binary?                                                                                                                                                             |
+| sex                     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                                         |
+| inclusion_list          | List of samples (eids) to include in analysis **[None]**                                                                                                                                                |
+| exclusion_list          | List of samples (eids) to exclude in analysis **[None]**                                                                                                                                                |
+| output_prefix           | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                                                                |
+| covarfile               | File containing additional covariates to correct for when running association tests                                                                                                                     |
+| categorical_covariates  | comma-delimited list of categorical covariates found in covarfile to include in this model                                                                                                              |
+| quantitative_covariates | comma-delimited file of quantitative covariates found in covarfile to include in this model                                                                                                             |
+
+There are also several command-line inputs that should not need to be changed if running from within application 9905. These
+mostly have to do with the underlying inputs to models that are generated by other tools in this pipeline. We have set
+sensible defaults for these files and only change them if running from a different set of filtered data.
+
+| input             | description                                                                                                                                | default file (all in `project-G6BJF50JJv8p4PjGB9yy7YQ2`) | 
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------| ------- |
+| bgen_index        | index file with information on filtered and annotated UKBB variants                                                                        | `file-G86GJ3jJJv8fbXVB9PQ2pjz6` |
+| transcript_index  | Tab-delimited file of information on transcripts expected by runassociationtesting output                                                  | `file-G7xyzF8JJv8kyV7q5z8VV3Vb` |
+| base_covariates   | base covariates (age, sex, wes_batch, PC1..PC10) file for all WES UKBB participants                                                        | `file-G7PzVbQJJv8kz6QvP41pvKVg` |
+| bed_file          | plink .bed format file from UKBB genetic data, filtered according to [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) | `file-G6qXq38J2vfXKBz44Z8bxf5V` |
+| fam_file          | corresponding .fam file for 'bed_file'                                                                                                     | `file-G6qXvg0J2vffF7Y44VFJb7jB` |
+| bim_file          | corresponding .bim file for 'bed_file'                                                                                                     | `file-G6qXvgQJ2vfqY3z64x7x8jPq` |
+| low_MAC_list      | list of low MAC (<100) variants in 'bed_file'                                                                                              | `file-G6qXvq8J2vfYY6y64Qy23v5b` |
+| sparse_grm        | a sparse GRM for all individuals in 'bed_file' created by SAIGE 'Step0'                                                                    | `file-G6xK1xjJb3g9vz0p236vZ9F5` |
+| sparse_grm_sample | corresponding samples in 'sparse_grm'                                                                                                      | `file-G6xK1z8Jb3g1Fp4j2311JKYF` |
 
 #### Association Tarballs
 
 `association_tarballs` takes a list file of DNANexus file-IDs that point to multiple outputs from the 'mergecollapsevariants'. 
-This file is one file-ID per line. This tool will use the file name to generate SNP IDs in the output files of the various tools.
-An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)`
-in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see
-the [high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information. 
+This file is one file-ID per line, like:
+
+```text
+file-G7z31B0J6F3ZbpGK6J0y2xxF
+file-G7z2zP8JQy2PjKjY97Zvb3z9
+file-G7z2pXjJ91Jx1ZJ4335bX52Z
+file-G7z2gBjJ9ZpVqP3098X3xK6Y
+file-G7z2VZQJ845v91751z2k9v2B
+file-G7yv39QJPY6bYJKY9776JJBG
+file-G7yqY10JkX6Y4fzvJf80z7P6
+file-G7yq4ZjJV8qPjKjY97ZvZJ85
+file-G7ypg98Jq133zgzY1yVy8gFz
+```
+
+Where each line is a different mask. An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) 
+is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)` in project 
+`project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see the 
+[high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information on
+pre-collapsed variant files.
 
 #### Phenotypes File
 
@@ -810,6 +843,9 @@ dx run mrcepid-runassociationtesting --priority low --destination results/ \
         -isex=2 \
         -irun_bolt=true
 ```
+
+**Note**: The above command line DOES NOT have an inclusion/exclusion list. Be sure to consider the individuals that you
+keep for your model!
 
 2. Run all tools/methods:
 
