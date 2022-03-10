@@ -141,11 +141,11 @@
     },
     {
       "name": "run_marker_tests",
-      "label": "Run per-marker tests for requested tool(s) [false]?",
+      "label": "Run per-marker tests for requested tool(s) [true]?",
       "class": "boolean",
       "optional": true,
-      "default": false,
-      "help": "Run per-marker tests for requested tool(s) [false]? This could DRASTICALLY increase run-time."
+      "default": true,
+      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY increase run-time."
     },
     {
       "name": "bgen_index",
@@ -182,7 +182,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G7PzVbQJJv8kz6QvP41pvKVg"
+          "id": "file-G8ZvZFQJJv8qZQ9P12KVjYjy"
         }
       }
     },

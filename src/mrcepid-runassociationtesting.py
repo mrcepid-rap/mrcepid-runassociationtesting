@@ -534,34 +534,35 @@ def process_bolt_outputs(association_pack: dict) -> None:
         cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + association_pack['output_prefix'] + '.genes.BOLT.stats.tsv.gz'
         run_cmd(cmd, True)
 
-    # And now process the SNP file:
+    # And now process the SNP file (if necessary):
     # Read in the variant index (per-chromosome and mash together)
-    variant_index = []
-    # Open all chromosome indicies and load them into a list and append them together
-    for chromosome in CHROMOSOMES:
-        variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t"))
+    if association_pack['run_marker_tests']:
+        variant_index = []
+        # Open all chromosome indicies and load them into a list and append them together
+        for chromosome in CHROMOSOMES:
+            variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t"))
 
-    variant_index = pd.concat(variant_index)
-    variant_index = variant_index.set_index('varID')
+        variant_index = pd.concat(variant_index)
+        variant_index = variant_index.set_index('varID')
 
-    # For markers, we can use the SNP ID column to get what we need
-    bolt_table_marker = bolt_table_marker.rename(columns={'SNP':'varID', 'A1FREQ':'BOLT_MAF'})
-    bolt_table_marker = bolt_table_marker.drop(columns=['CHR','BP','ALLELE1','ALLELE0','GENPOS'])
-    bolt_table_marker['BOLT_AC'] = bolt_table_marker['BOLT_MAF'] * (n_bolt*2)
-    bolt_table_marker['BOLT_AC'] = bolt_table_marker['BOLT_AC'].round()
-    bolt_table_marker = pd.merge(variant_index, bolt_table_marker, on='varID', how="left")
-    with open(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv', 'w') as marker_out:
-        # Sort by chrom/pos just to be sure...
-        bolt_table_marker = bolt_table_marker.sort_values(by=['CHROM','POS'])
+        # For markers, we can use the SNP ID column to get what we need
+        bolt_table_marker = bolt_table_marker.rename(columns={'SNP':'varID', 'A1FREQ':'BOLT_MAF'})
+        bolt_table_marker = bolt_table_marker.drop(columns=['CHR','BP','ALLELE1','ALLELE0','GENPOS'])
+        bolt_table_marker['BOLT_AC'] = bolt_table_marker['BOLT_MAF'] * (n_bolt*2)
+        bolt_table_marker['BOLT_AC'] = bolt_table_marker['BOLT_AC'].round()
+        bolt_table_marker = pd.merge(variant_index, bolt_table_marker, on='varID', how="left")
+        with open(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv', 'w') as marker_out:
+            # Sort by chrom/pos just to be sure...
+            bolt_table_marker = bolt_table_marker.sort_values(by=['CHROM','POS'])
 
-        bolt_table_marker.to_csv(path_or_buf=marker_out, index = False, sep="\t", na_rep='NA')
-        gene_out.close()
+            bolt_table_marker.to_csv(path_or_buf=marker_out, index = False, sep="\t", na_rep='NA')
+            gene_out.close()
 
-        # And bgzip and tabix...
-        cmd = "bgzip /test/" + association_pack['output_prefix'] + '.markers.BOLT.stats.tsv'
-        run_cmd(cmd, True)
-        cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz'
-        run_cmd(cmd, True)
+            # And bgzip and tabix...
+            cmd = "bgzip /test/" + association_pack['output_prefix'] + '.markers.BOLT.stats.tsv'
+            run_cmd(cmd, True)
+            cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz'
+            run_cmd(cmd, True)
 
 
 # Run rare variant association testing using BOLT
@@ -582,11 +583,12 @@ def bolt(association_pack: dict) -> None:
                                                        tarball_prefix = tarball_prefix,
                                                        chromosome = chromosome))
 
-            poss_chromosomes.write("/test/%s /test/%s\n" % (chromosome + ".markers.bgen", chromosome + ".markers.sample"))
-            chrom_bgen_index = association_pack['bgen_dict'][chromosome] # This holds the information for downloading the bgen file
-            future_pool.append(executor.submit(process_bolt_markers,
-                                               chromosome = chromosome,
-                                               chrom_bgen_index = chrom_bgen_index))
+            if association_pack['run_marker_tests']:
+                poss_chromosomes.write("/test/%s /test/%s\n" % (chromosome + ".markers.bgen", chromosome + ".markers.sample"))
+                chrom_bgen_index = association_pack['bgen_dict'][chromosome] # This holds the information for downloading the bgen file
+                future_pool.append(executor.submit(process_bolt_markers,
+                                                   chromosome = chromosome,
+                                                   chrom_bgen_index = chrom_bgen_index))
 
 
         poss_chromosomes.close()
@@ -668,16 +670,7 @@ def saige_step_one(association_pack: dict) -> None:
     else:
         cmd = cmd + "--traitType=quantitative"
 
-    cmd = "docker run -v /home/dnanexus:/test -v /usr/bin/:/prog egardner413/mrcepid-associationtesting " + cmd
-    popen = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    for stdout_line in iter(popen.stdout.readline, ""):
-        print(stdout_line.decode('utf-8'))
-    popen.stdout.close()
-    return_code = popen.wait()
-    if return_code:
-        raise subprocess.CalledProcessError(return_code, cmd)
-
-    # run_cmd(cmd, True, association_pack['pheno_name'] + ".SAIGE_step1.log")
+    run_cmd(cmd, True, association_pack['pheno_name'] + ".SAIGE_step1.log")
 
 
 # This is a helper function to parallelise SAIGE step 2 by chromosome
@@ -1083,9 +1076,10 @@ def main(association_tarballs, run_bolt, run_staar, run_saige, run_linear_model,
         output_files.append(association_pack['output_prefix'] + ".stats.gz")
         output_files.append(association_pack['output_prefix'] + '.genes.BOLT.stats.tsv.gz')
         output_files.append(association_pack['output_prefix'] + '.genes.BOLT.stats.tsv.gz.tbi')
-        output_files.append(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz')
-        output_files.append(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz.tbi')
         output_files.append(association_pack['output_prefix'] + ".BOLT.log")
+        if association_pack['run_marker_tests']:
+            output_files.append(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz')
+            output_files.append(association_pack['output_prefix'] + '.markers.BOLT.stats.tsv.gz.tbi')
     if run_saige:
         # Run step one without parallelisation
         print("Running SAIGE step 1...")
