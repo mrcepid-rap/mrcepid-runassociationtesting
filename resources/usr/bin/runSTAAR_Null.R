@@ -35,7 +35,7 @@ if (cat_covars != "NULL") {
   cat_covars <- strsplit(cat_covars, ",")[[1]]
   data.cols <- c(data.cols, cat_covars)
   for (covar in cat_covars) {
-    data_for_STAAR[,eval(col.id):=as.character(get(col.id))]
+    data_for_STAAR[,eval(covar):=as.character(get(covar))]
   }
 } else {
   cat_covars <- c()
