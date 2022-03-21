@@ -8,13 +8,38 @@
   "inputSpec": [
     {
       "name": "association_tarballs",
-      "label": "list of tarballs from 'mergecollapsevariants'",
+      "label": "list of tarballs/single tarball from 'mergecollapsevariants'",
       "class": "file",
       "optional": false,
       "patterns": [
         "*.tar.gz"
       ],
-      "help": "Path/hash to list file of mask tarballs from 'mergecollapsevariants'"
+      "help": "Path or hash to list file / single tarball of masks from 'mergecollapsevariants'"
+    },
+    {
+      "name": "tool",
+      "label": "Select the burden test tool to run (bolt, staar, saige, glm, regenie). Required if using 'burden' mode.",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "choices": ["bolt", "saige", "staar", "glm", "regenie"],
+      "help": "Select the burden test tool to run (bolt, staar, saige, glm, regenie). Required if using 'burden' mode. Case *MUST* match."
+    },
+    {
+      "name": "mode",
+      "label": "Run mode for this tool (burden, extract, phewas). See README for more details.",
+      "class": "string",
+      "optional": false,
+      "choices": ["burden","extract","phewas"],
+      "help": "Select the type of analysis you want to perform (burden, extract). Please see the README for more details on required inputs. Case *must* match."
+    },
+    {
+      "name": "gene_ids",
+      "label": "Gene or comma-separated list of genes to extract variants/genotypes for.",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "A valid ENST Gene ID OR Gene Symbol, or comma-separated list of Symbols/IDs (MUST BE IN transcripts.tsv [project-G6BJF50JJv8p4PjGB9yy7YQ2:file-G7xyzF8JJv8kyV7q5z8VV3Vb]) to extract carriers and phenotype/covariate information for."
     },
     {
       "name": "phenofile",
@@ -25,6 +50,14 @@
         "*.pheno"
       ],
       "help": "Path/hash to phenotype file."
+    },
+    {
+      "name": "phenoname",
+      "label": "Single phenotype name to run association tests for.",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "A single phenotype name to run association tests for. This MUST EXACTLY match the header of the provided phenofile to function properly. Only required if providing a pheno file with multiple phenotype columns (other than IID/FID)."
     },
     {
       "name": "covarfile",
@@ -52,46 +85,6 @@
       "optional": true,
       "default": null,
       "help": "A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) in <covarfile>. Names MUST match column header."
-    },
-    {
-      "name": "run_bolt",
-      "label": "Run BOLT association testing [false]?",
-      "class": "boolean",
-      "optional": true,
-      "default": false,
-      "help": "Run BOLT association testing [false]?"
-    },
-    {
-      "name": "run_saige",
-      "label": "Run SAIGE association testing [false]?",
-      "class": "boolean",
-      "optional": true,
-      "default": false,
-      "help": "Run SAIGE association testing [false]?"
-    },
-    {
-      "name": "run_staar",
-      "label": "Run STAAR association testing [false]?",
-      "class": "boolean",
-      "optional": true,
-      "default": false,
-      "help": "Run STAAR association testing [false]?"
-    },
-    {
-      "name": "run_linear_model",
-      "label": "Run linear model association testing [false]?",
-      "class": "boolean",
-      "optional": true,
-      "default": false,
-      "help": "Run linear model association testing [false]?"
-    },
-    {
-      "name": "run_all",
-      "label": "Run ALL association testing tools [false]?",
-      "class": "boolean",
-      "optional": true,
-      "default": false,
-      "help": "Run ALL association testing tools. Will over-ride settings for all other 'run_*' settings"
     },
     {
       "name": "is_binary",
@@ -145,7 +138,7 @@
       "class": "boolean",
       "optional": true,
       "default": true,
-      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY increase run-time."
+      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY reduce run-time (particularly if -itool=saige)."
     },
     {
       "name": "bgen_index",
@@ -247,7 +240,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G6xK1xjJb3g9vz0p236vZ9F5"
+          "id": "file-G8gYpKjJJv8fj1p20PYKBv6P"
         }
       }
     },
@@ -260,7 +253,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G6xK1z8Jb3g1Fp4j2311JKYF"
+          "id": "file-G8gYpVQJJv8ybj8y8FqZf8YV"
         }
       }
     }
