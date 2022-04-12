@@ -90,7 +90,7 @@ class BOLTRunner:
                 "--bfile=/test/genetics/UKBB_450K_Autosomes_QCd_WBA " \
                 "--exclude=/test/genetics/UKBB_450K_Autosomes_QCd.low_MAC.snplist " \
                 "--phenoFile=/test/phenotypes_covariates.formatted.txt " \
-                "--phenoCol=" + self._association_pack.pheno_name + " " \
+                "--phenoCol=" + self._association_pack.pheno_names[0] + " " \
                 "--covarFile=/test/phenotypes_covariates.formatted.txt " \
                 "--covarCol=sex " \
                 "--covarCol=wes_batch " \

@@ -27,7 +27,7 @@ class STAARRunner:
                     thread_utility.launch_job(self._staar_genes,
                                               tarball_prefix = tarball_prefix,
                                               chromosome = chromosome,
-                                              pheno_name = association_pack.pheno_name)
+                                              pheno_name = association_pack.pheno_names[0])
         future_results = thread_utility.collect_futures()
 
         # 3. Print a preliminary STAAR output
@@ -40,7 +40,7 @@ class STAARRunner:
 
         # 4. Annotate and print final STAAR output
         self._process_staar_outputs()
-        os.rename(association_pack.pheno_name + ".STAAR_null.rds", association_pack.output_prefix + ".STAAR_null.rds") # I know, this is lazy...
+        os.rename(association_pack.pheno_names[0] + ".STAAR_null.rds", association_pack.output_prefix + ".STAAR_null.rds") # I know, this is lazy...
         self.outputs = [association_pack.output_prefix + '.genes.STAAR.stats.tsv.gz',
                         association_pack.output_prefix + '.genes.STAAR.stats.tsv.gz.tbi',
                         association_pack.output_prefix + ".STAAR_null.rds"]
@@ -54,7 +54,7 @@ class STAARRunner:
         # See the README.md for more information on these parameters
         cmd = "Rscript /prog/runSTAAR_Null.R " \
               "/test/phenotypes_covariates.formatted.txt " + \
-              self._association_pack.pheno_name + " " + \
+              self._association_pack.pheno_names[0] + " " + \
               str(self._association_pack.is_binary)
         if len(self._association_pack.found_quantitative_covariates) > 0:
             cmd += " " + ','.join(self._association_pack.found_quantitative_covariates)

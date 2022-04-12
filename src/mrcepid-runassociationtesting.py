@@ -11,8 +11,6 @@ import tarfile
 import sys
 
 # We have to do this to get modules to run properly on DNANexus while still enabling easy editing in PyCharm
-import dxpy
-
 sys.path.append('/')
 sys.path.append('/runassociationtesting/')
 
@@ -25,6 +23,7 @@ from runassociationtesting.tool_runners.saige_runner import SAIGERunner
 from runassociationtesting.tool_runners.staar_runner import STAARRunner
 from runassociationtesting.tool_runners.regenie_runner import REGENIERunner
 from runassociationtesting.extract_variants.extract_variants import ExtractVariants
+from runassociationtesting.phewas.phewas import PheWAS
 
 
 @dxpy.entry_point('main')
@@ -36,9 +35,6 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
     if mode == 'burden':
         if tool is None:
             dxpy.AppError("Must provide a tool if running 'burden' mode.")
-    if mode == 'extract' or mode == 'phewas':
-        if gene_ids is None:
-            dxpy.AppError("Must provide gene_ids if running 'extract' or 'phewas' mode.")
 
     # Grab the data / docker resources necessary to run with the 'IngestData' class:
     ingested_data = IngestData(association_tarballs, phenofile, covarfile, inclusion_list, exclusion_list,
@@ -47,10 +43,14 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
 
     # Process samples and build covariate / phenotype resources with the CovariateProcessor class
     # This does sample and covariate processing for all pipelines regardless of what we need to run
-    # Also creates returns an object of class AssocationPack that contains information necessary to run burden tests
+    # Also creates and returns an object of class AssocationPack that contains information necessary to run all tests
     covariate_processor = CovariateProcessor(ingested_data, phenoname, categorical_covariates, quantitative_covariates,
-                                             sex, is_binary, run_marker_tests, output_prefix, mode)
+                                             gene_ids, sex, is_binary, run_marker_tests, output_prefix, mode)
     association_pack = covariate_processor.association_pack
+
+    if mode == 'extract' or mode == 'phewas':
+        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
+            dxpy.AppError("Must provide gene_ids if running 'extract' or 'phewas' mode without a SNP-list tar.")
 
     # Now do specific analysis depending on selected 'mode':
     if mode == 'burden':
@@ -72,7 +72,10 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
             tool_run = REGENIERunner(association_pack)
 
     elif mode == 'extract':
-        tool_run = ExtractVariants(association_pack, gene_ids)
+        tool_run = ExtractVariants(association_pack)
+
+    elif mode == 'phewas':
+        tool_run = PheWAS(association_pack)
 
     # Create tar of all possible output files
     if output_prefix is None:

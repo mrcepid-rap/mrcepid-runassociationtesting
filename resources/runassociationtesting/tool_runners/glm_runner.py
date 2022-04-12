@@ -1,6 +1,4 @@
 import csv
-import gzip
-import pandas as pd
 import statsmodels.api as sm
 import numpy as np
 
@@ -20,28 +18,35 @@ class LinearModelPack:
     # 'null_model': a null model containing just IID and residuals
     # 'n_model': Number of individuals with values in the pheno/covariate file (do this here to save compute)
     # 'genotypes': A dictionary storing "genotypes" for all masks provided to this tool (empty at instantiation, is filled by self._load_tarball_linear_model)
-    def __init__(self, phenotypes: pd.DataFrame, model_family: sm.families, model_formula: str, null_model: pd.DataFrame):
+    def __init__(self, phenotypes: pd.DataFrame, phenoname: str, model_family: sm.families, model_formula: str, null_model: pd.DataFrame):
 
         self.phenotypes = phenotypes
+        self.phenoname = phenoname
         self.model_family = model_family
         self.model_formula = model_formula
         self.null_model = null_model
         self.n_model = len(self.phenotypes)
-        self.genotypes = {}
 
 
 class GLMRunner:
 
-    def __init__(self, association_pack: AssociationPack, genes_to_run=None):
+    def __init__(self, association_pack: AssociationPack, genes_to_run: list = None):
 
         # 1. Do setup for the linear models.
         # This will load all variants, genes, and phenotypes into memory to allow for parallelization
         # This function returns a class of type LinearModelPack containing info for running GLMs
+        # If we are doing a PheWAS mode, we set a flag to not run a null model
         print("Loading data and running null Linear Model")
         self._association_pack = association_pack
-        self._linear_model_pack = self._linear_model_null()
+        model_packs = {}
+        for pheno in self._association_pack.pheno_names:
+            returned_pack = self._linear_model_null(pheno)
+            if returned_pack is None:
+                print("Phenotype " + pheno + " has no individuals after filtering, skipping...")
+            else:
+                model_packs[pheno] = returned_pack
 
-        # 2. Load the tarballs INTO the genotypes dictionary created by _linear_model_null
+        # 2. Load the tarballs INTO separate genotypes dictionaries
         print("Loading Linear Model genotypes")
         thread_utility = ThreadUtility(self._association_pack.threads,
                                        error_message='A GLM thread failed',
@@ -50,11 +55,13 @@ class GLMRunner:
 
         for tarball_prefix in association_pack.tarball_prefixes:
             thread_utility.launch_job(self._load_tarball_linear_model,
-                                      tarball_prefix = tarball_prefix)
+                                      tarball_prefix = tarball_prefix,
+                                      is_snp_tar = self._association_pack.is_snp_tar)
         future_results = thread_utility.collect_futures()
+        genotype_packs = {}
         for result in future_results:
             tarball_prefix, genotype_dict = result
-            self._linear_model_pack.genotypes[tarball_prefix] = genotype_dict
+            genotype_packs[tarball_prefix] = genotype_dict
 
         # 3. Iterate through every model / gene (in linear_model_pack['genes']) pair and run a GLM
         print("Submitting Linear Models to threads")
@@ -64,29 +71,40 @@ class GLMRunner:
                                        thread_factor=1)
 
         # This 'if/else' allows us to provide a subset of models that we want to run, if selected
-        for model in self._linear_model_pack.genotypes:
-            if genes_to_run is None:
-                for gene in self._linear_model_pack.genotypes[model]:
-                    thread_utility.launch_job(self._linear_model_genes,
-                                              linear_model_pack = self._linear_model_pack,
-                                              gene = gene,
-                                              mask_name = model,
-                                              pheno_name = association_pack.pheno_name)
-            else:
-                for gene in genes_to_run:
-                    thread_utility.launch_job(self._linear_model_genes,
-                                              linear_model_pack = self._linear_model_pack,
-                                              gene = gene,
-                                              mask_name = model,
-                                              pheno_name = association_pack.pheno_name)
+        for pheno in model_packs:
+            for model in genotype_packs:
+                if genes_to_run is None:
+                    for gene in genotype_packs[model]:
+                        thread_utility.launch_job(self._linear_model_genes,
+                                                  linear_model_pack = model_packs[pheno],
+                                                  genotype_table = genotype_packs[model],
+                                                  gene = gene,
+                                                  mask_name = model,
+                                                  mode = self._association_pack.mode)
+                else:
+                    for gene in genes_to_run:
+                        thread_utility.launch_job(self._linear_model_genes,
+                                                  linear_model_pack = model_packs[pheno],
+                                                  genotype_table = genotype_packs[model],
+                                                  gene = gene,
+                                                  mask_name = model,
+                                                  mode = self._association_pack.mode,
+                                                  is_binary = self._association_pack.is_binary)
 
         # 4. Write unformatted results:
         print("Writing initial Linear Model results")
+
+        # Binary traits get an additional set of fields to describe the confusion matrix.
+        fieldnames = ['ENST','maskname','pheno_name','p_val_init','n_car','n_model',
+                      'p_val_full','effect','std_err']
+        if self._association_pack.is_binary:
+            fieldnames.extend(['n_noncar_affected', 'n_noncar_unaffected', 'n_car_affected', 'n_car_unaffected'])
+
         lm_stats_file = open(association_pack.output_prefix + '.lm_stats.tmp', 'w')
         lm_stats_writer = csv.DictWriter(lm_stats_file,
                                          delimiter = "\t",
-                                         fieldnames=['ENST','maskname','pheno_name','p_val_init','n_car','n_model',
-                                                     'p_val_full','effect','std_err'])
+                                         fieldnames=fieldnames)
+
         lm_stats_writer.writeheader()
         future_results = thread_utility.collect_futures()
         for result in future_results:
@@ -96,12 +114,17 @@ class GLMRunner:
 
         # 5. Annotate unformatted results and print final outputs
         print("Annotating Linear Model results")
-        self._process_linear_model_outputs(genes_to_run)
-        self.outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
-                        association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
+        if self._association_pack.is_snp_tar:
+            os.rename(association_pack.output_prefix + '.lm_stats.tmp',
+                      association_pack.output_prefix + '.SNP.glm.stats.tsv')
+            self.outputs = [association_pack.output_prefix + '.SNP.glm.stats.tsv']
+        else:
+            self._process_linear_model_outputs(genes_to_run)
+            self.outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
+                            association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
 
     # Setup linear models:
-    def _linear_model_null(self) -> LinearModelPack:
+    def _linear_model_null(self, phenotype: str) -> LinearModelPack:
 
         # load covariates and phenotypes
         pheno_covars = pd.read_csv("phenotypes_covariates.formatted.txt",
@@ -109,47 +132,57 @@ class GLMRunner:
                                    index_col="FID",
                                    dtype={'IID': str})
         pheno_covars.index = pheno_covars.index.astype(str)
+        # This next line doesn't matter for standard burden tests, but is required for phewas when we don't pre-remove
+        # individuals with NA phenotypes:
+        pheno_covars = pheno_covars[pheno_covars[phenotype].isna() == False]
 
-        # Decide what model family to use:
-        if self._association_pack.is_binary:
-            family = sm.families.Binomial()
+        # Check if a binary trait and make sure there is more than one level after filtering
+        if (self._association_pack.is_binary is True and len(pheno_covars[phenotype].value_counts()) > 1) or \
+                self._association_pack.is_binary is False:
+
+            # Decide what model family to use:
+            if self._association_pack.is_binary:
+                family = sm.families.Binomial()
+            else:
+                family = sm.families.Gaussian()
+
+            # And finally define the formula to be used by all models:
+            # Make sure to define additional covariates as requested by the user...
+            form_null = phenotype + ' ~ sex + age + age_squared + C(wes_batch) + PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10'
+            if len(self._association_pack.found_quantitative_covariates) > 0:
+                for covar in self._association_pack.found_quantitative_covariates:
+                    form_null += ' + ' + covar
+            if len(self._association_pack.found_categorical_covariates) > 0:
+                for covar in self._association_pack.found_categorical_covariates:
+                    form_null += ' + C(' + covar + ')'
+
+            form_full = form_null + ' + has_var'
+
+            print('Using the following formula for GLMs: ')
+            print(form_full)
+
+            # Build the null model and extract residuals:
+            sm_results_null = sm.GLM.from_formula(form_null, data=pheno_covars, family=sm.families.Gaussian()).fit()
+            null_table = sm_results_null.resid_response.to_frame()
+            null_table = null_table.rename(columns={0:'resid'})
+
+            # Start building a set of models we want to test.
+            return LinearModelPack(phenotypes=pheno_covars,
+                                   phenoname=phenotype,
+                                   model_family=family,
+                                   model_formula=form_full,
+                                   null_model=null_table)
         else:
-            family = sm.families.Gaussian()
-
-        # And finally define the formula to be used by all models:
-        # Make sure to define additional covariates as requested by the user...
-        form_null = self._association_pack.pheno_name + ' ~ sex + age + age_squared + C(wes_batch) + PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10'
-        if len(self._association_pack.found_quantitative_covariates) > 0:
-            for covar in self._association_pack.found_quantitative_covariates:
-                form_null += ' + ' + covar
-        if len(self._association_pack.found_categorical_covariates) > 0:
-            for covar in self._association_pack.found_categorical_covariates:
-                form_null += ' + C(' + covar + ')'
-
-        form_full = form_null + ' + has_var'
-
-        print('Using the following formula for GLMs: ')
-        print(form_full)
-
-        # Build the null model and extract residuals:
-        sm_results_null = sm.GLM.from_formula(form_null, data=pheno_covars, family=sm.families.Gaussian()).fit()
-        null_table = sm_results_null.resid_response.to_frame()
-        null_table = null_table.rename(columns={0:'resid'})
-
-        # Start building a set of models we want to test.
-        return LinearModelPack(phenotypes=pheno_covars,
-                               model_family=family,
-                               model_formula=form_full,
-                               null_model=null_table)
+            return None
 
     # load genes/genetic data we want to test/use:
     # For each tarball prefix, we want to make ONE dict for efficient querying of variants
     @staticmethod
-    def _load_tarball_linear_model(tarball_prefix: str) -> tuple:
+    def _load_tarball_linear_model(tarball_prefix: str, is_snp_tar: bool) -> tuple:
 
         print("Loading tarball prefix: " + tarball_prefix)
         geno_tables = []
-        for chromosome in get_chromosomes():
+        for chromosome in get_chromosomes(is_snp_tar):
             # This handles the genes that we need to test:
             if exists(tarball_prefix + "." + chromosome + ".BOLT.bgen"):
                 # This handles the actual genetic data:
@@ -187,13 +220,13 @@ class GLMRunner:
 
     # Run rare variant association testing using GLMs
     @staticmethod
-    def _linear_model_genes(linear_model_pack: LinearModelPack, gene: str, mask_name: str, pheno_name: str) -> dict:
+    def _linear_model_genes(linear_model_pack: LinearModelPack, genotype_table: dict, gene: str, mask_name: str, mode: str, is_binary: bool) -> dict:
 
         # Now successively iterate through each gene and run our model:
         # I think this is straight-forward?
-        indv_w_var = linear_model_pack.genotypes[mask_name][gene]
+        indv_w_var = genotype_table[gene]
 
-        # We have to make an internal copy as this DataFrame is NOT threadsafe...
+        # We have to make an internal copy as this pandas.DataFrame is NOT threadsafe...
         # (psssttt... I still am unsure if it is...)
         internal_frame = pd.DataFrame.copy(linear_model_pack.null_model)
         internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
@@ -204,19 +237,26 @@ class GLMRunner:
                          'n_model': linear_model_pack.n_model,
                          'ENST': gene,
                          'maskname': mask_name,
-                         'pheno_name': pheno_name,
+                         'pheno_name': linear_model_pack.phenoname,
                          'p_val_full': 'NA',
                          'effect': 'NA',
                          'std_err': 'NA'}
+            if is_binary:
+                gene_dict['n_noncar_affected'] = 'NA'
+                gene_dict['n_noncar_unaffected'] = 'NA'
+                gene_dict['n_car_affected'] = 'NA'
+                gene_dict['n_car_unaffected'] = 'NA'
         else:
             sm_results = sm.GLM.from_formula('resid ~ has_var',
                                              data=internal_frame,
                                              family=sm.families.Gaussian()).fit()
-            # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
-            if sm_results.pvalues['has_var'] < 1e-4:
 
-                internal_frame = pd.DataFrame.copy(linear_model_pack.phenotypes)
-                internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
+            internal_frame = pd.DataFrame.copy(linear_model_pack.phenotypes)
+            internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
+
+            # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
+            # OR if we are running a phewas, always calculate the full model
+            if sm_results.pvalues['has_var'] < 1e-4 or mode == "phewas":
 
                 sm_results_full = sm.GLM.from_formula(linear_model_pack.model_formula,
                                                       data=internal_frame,
@@ -226,20 +266,34 @@ class GLMRunner:
                              'n_model': sm_results.nobs,
                              'ENST': gene,
                              'maskname': mask_name,
-                             'pheno_name': pheno_name,
+                             'pheno_name': linear_model_pack.phenoname,
                              'p_val_full': sm_results_full.pvalues['has_var'],
                              'effect': sm_results_full.params['has_var'],
                              'std_err': sm_results_full.bse['has_var']}
+                # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
+                if is_binary:
+                    gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
+
             else:
                 gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
                              'n_car': n_car,
                              'n_model': sm_results.nobs,
                              'ENST': gene,
                              'maskname': mask_name,
-                             'pheno_name': pheno_name,
+                             'pheno_name': linear_model_pack.phenoname,
                              'p_val_full': 'NA',
                              'effect': 'NA',
                              'std_err': 'NA'}
+                # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
+                if is_binary:
+                    gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
+
         return gene_dict
 
     # Process/annotate Linear Model output file

@@ -1,6 +1,9 @@
 import os
 import dxpy
+import gzip
 import subprocess
+import pandas as pd
+import pandas.core.series
 
 
 # This function runs a command on an instance, either with or without calling the docker instance we downloaded
@@ -40,10 +43,14 @@ def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None, print_cm
 
 
 # This is to generate a global CHROMOSOMES variable for parallelisation
-def get_chromosomes():
-    chromosomes = list(range(1,23)) # Is 0 based on the right coordinate...? (So does 1..22)
-    chromosomes.extend(['X'])
-    chromosomes = list(map(str, chromosomes))
+def get_chromosomes(is_snp_tar: bool = False):
+
+    if is_snp_tar:
+        chromosomes = list(['SNP'])
+    else:
+        chromosomes = list(range(1,23)) # Is 0 based on the right coordinate...? (So does 1..22)
+        chromosomes.extend(['X'])
+        chromosomes = list(map(str, chromosomes))
 
     return chromosomes
 
@@ -90,3 +97,38 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
     # And finally index the file
     cmd = "bgenix -index -g /test/" + chromosome + '.markers.bgen'
     run_cmd(cmd, True)
+
+
+def build_transcript_table() -> pandas.DataFrame:
+
+    transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
+    transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
+    transcripts_table = transcripts_table.set_index('ENST')
+    return(transcripts_table)
+
+
+def get_gene_id(gene_id: str, transcripts_table: pandas.DataFrame) -> pandas.core.series.Series:
+
+    if 'ENST' in gene_id:
+        print("gene_id – " + gene_id + " – looks like an ENST value... validating...")
+        try:
+            gene_info = transcripts_table.loc[gene_id]
+            print("Found one matching ENST (%s - %s)... proceeding..." % (gene_id, gene_info['coord']))
+        except KeyError:
+            print("Did not find a transcript with ENST value %s... terminating..." % gene_id)
+    else:
+        print("gene_id – " + gene_id + " – does not look like an ENST value, searching for symbol instead...")
+        found_rows = transcripts_table[transcripts_table['SYMBOL'] == gene_id]
+        if len(found_rows) == 1:
+            found_enst = found_rows.index[0]
+            gene_info = transcripts_table.loc[found_enst]
+            print("Found one matching ENST (%s - %s) for SYMBOL %s... proceeding..." % (found_enst, gene_info['coord'], gene_id))
+        elif len(found_rows) > 1:
+            gene_info = None
+            print("Found %i ENST IDs (%s) for SYMBOL %s... Please re-run using exact ENST to ensure consistent results..." % (len(found_rows), ','.join(found_rows.index.to_list()), gene_id))
+            raise Exception("Multiple ENST IDs")
+        else:
+            gene_info = None
+            print("Did not find an associated ENST ID for SYMBOL %s... Please re-run after checking SYMBOL/ENST used..." % (gene_id))
+
+    return gene_info

@@ -28,7 +28,7 @@ class SAIGERunner:
                     thread_utility.launch_job(class_type = self._saige_step_two,
                                               tarball_prefix = tarball_prefix,
                                               chromosome = chromosome,
-                                              pheno_name = association_pack.pheno_name,
+                                              pheno_name = association_pack.pheno_names[0],
                                               is_binary = association_pack.is_binary)
         future_results = thread_utility.collect_futures()
 
@@ -55,7 +55,7 @@ class SAIGERunner:
                 thread_utility.launch_job(class_type=self._saige_marker_run,
                                           chromosome=chromosome,
                                           chrom_bgen_index=association_pack.bgen_dict[chromosome],
-                                          pheno_name=association_pack.pheno_name,
+                                          pheno_name=association_pack.pheno_names[0],
                                           is_binary = association_pack.is_binary)
                 completed_marker_chromosomes.append(chromosome)
             thread_utility.collect_futures()
@@ -77,10 +77,10 @@ class SAIGERunner:
         # See the README.md for more information on these parameters
         cmd = 'step1_fitNULLGLMM.R ' \
                     '--phenoFile=/test/phenotypes_covariates.formatted.txt ' \
-                    '--phenoCol=' + self._association_pack.pheno_name + " " \
+                    '--phenoCol=' + self._association_pack.pheno_names[0] + " " \
                     '--isCovariateTransform=FALSE ' \
                     '--sampleIDColinphenoFile=IID ' \
-                    '--outputPrefix=/test/' + self._association_pack.pheno_name + '.SAIGE_OUT ' \
+                    '--outputPrefix=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT ' \
                     '--sparseGRMFile=/test/genetics/fixed_rel.sorted.mtx ' \
                     '--sparseGRMSampleIDFile=/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt ' \
                     '--nThreads=' + str(self._association_pack.threads) + ' ' \

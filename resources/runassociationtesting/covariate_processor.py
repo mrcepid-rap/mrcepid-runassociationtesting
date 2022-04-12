@@ -8,11 +8,12 @@ from association_pack import AssociationPack
 class CovariateProcessor:
 
     def __init__(self, ingested_data: IngestData, phenoname: str, categorical_covariates: str, quantitative_covariates: str,
-                 sex: int, is_binary: bool, run_marker_tests: bool, output_prefix: str, mode: str):
+                 gene_ids: str, sex: int, is_binary: bool, run_marker_tests: bool, output_prefix: str, mode: str):
 
         self._sex = sex
         self._mode = mode
         self._get_num_threads()
+        self._set_gene_ids(gene_ids)
 
         self._genetics_samples = set()
         self._select_individuals(ingested_data.inclusion_found,
@@ -39,14 +40,23 @@ class CovariateProcessor:
                                                 threads=self._threads,
                                                 run_marker_tests=run_marker_tests,
                                                 output_prefix=output_prefix,
-                                                pheno_name=self._pheno_name,
+                                                pheno_names=self._pheno_names,
+                                                mode=self._mode,
+                                                is_snp_tar=ingested_data.is_snp_tar,
                                                 found_quantitative_covariates=self._found_quantitative_covariates,
-                                                found_categorical_covariates=self._found_categorical_covariates)
+                                                found_categorical_covariates=self._found_categorical_covariates,
+                                                gene_ids=self._gene_ids)
 
     # Get number of cores available to the instance:
     def _get_num_threads(self) -> None:
         self._threads = os.cpu_count()
         print("{0:65}: {val}".format("Number of threads available", val = self._threads))
+
+    def _set_gene_ids(self, gene_ids) -> None:
+        if gene_ids is None:
+            self._gene_ids = None
+        else:
+            self._gene_ids = gene_ids.split(",")
 
     # Three steps here:
     # 1. Get individuals we plan to include
@@ -97,38 +107,46 @@ class CovariateProcessor:
         dialect = csv.Sniffer().sniff(open('model_phenotypes.pheno', 'r').readline(), delimiters=[' ','\t'])
         pheno_reader = csv.DictReader(open('model_phenotypes.pheno', 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
         field_names = pheno_reader.fieldnames
-        if len(field_names) != 3:
-            if self._mode == 'phewas':
-
-            else:
+        # For PheWAS we want to ingest ALL pheno fields
+        if self._mode == 'phewas':
+            for field in field_names:
+                if field != "FID" and field != "IID":
+                    self._pheno_names.append(field)
+        # Otherwise do standard phenotype name processing
+        else:
+            if len(field_names) != 3:
                 if phenoname is None:
-                    raise RuntimeError("Pheno file has more than three columns and phenoname is not set!")
+                    raise RuntimeError("Pheno file has more than three columns (IID/FID/pheno) and phenoname is not set"
+                                       " – 'extract' and 'burden' modes are only compatible with a single phenotype!")
                 else:
                     if phenoname in field_names:
-                        self._pheno_names = phenoname
+                        self._pheno_names.append(phenoname)
                     else:
                         raise RuntimeError("phenoname was not found in the provided phenofile!")
-        else:
-            if phenoname is None:
-                for field in field_names:
-                    if field != "FID" and field != "IID":
-                        self._pheno_names = field
             else:
-                if phenoname in field_names:
-                    self._pheno_names = phenoname
+                if phenoname is None:
+                    for field in field_names:
+                        if field != "FID" and field != "IID":
+                            self._pheno_names.append(field)
                 else:
-                    raise RuntimeError("phenoname was not found in the provided phenofile!")
+                    if phenoname in field_names:
+                        self._pheno_names.append(phenoname)
+                    else:
+                        raise RuntimeError("phenoname was not found in the provided phenofile!")
 
         if "FID" not in field_names and "IID" not in field_names:
             raise RuntimeError("Pheno file does not contain FID/IID fields!")
 
         for indv in pheno_reader:
             # Will spit out an error if a given sample does not have data
-            if indv[self._pheno_name] is None:
-                raise dxpy.AppError("Phenotype file has blank lines!")
-            # Exclude individuals that have missing data (NA/NAN)
-            elif indv[self._pheno_name].lower() != "na" and indv[self._pheno_name].lower() != "nan" and indv[self._pheno_name].lower() != "":
-                self._phenotypes[indv['FID']] = indv[self._pheno_name]
+            for pheno in self._pheno_names:
+                if pheno not in self._phenotypes:
+                    self._phenotypes[pheno] = {}
+                if indv[pheno] is None:
+                    raise dxpy.AppError("Phenotype file has blank lines!")
+                # Exclude individuals that have missing data (NA/NAN)
+                elif indv[pheno].lower() != "na" and indv[pheno].lower() != "nan" and indv[pheno].lower() != "":
+                    self._phenotypes[pheno][indv['FID']] = indv[pheno]
 
     # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
     def _process_additional_covariates(self, additional_covariates_found: bool, categorical_covariates: str, quantitative_covariates: str) -> tuple:
@@ -184,7 +202,7 @@ class CovariateProcessor:
 
         # Read the base covariates into this code that we want to analyse:
         # Formatting is weird to fit with other printing below...
-        print("{0:65}: {val}".format("Phenotype", val = self._pheno_name))
+        print("{0:65}: {val}".format("Phenotype(s)", val = ','.join(self._pheno_names)))
         print("{0:65}: {val}".format("Default covariates included in model", val = ''))
         print("{pad:^5}{:60}: {val}".format("Quantitative", val = 'age, age^2, PC1..PC10',pad=' '))
         if (self._sex == 2):
@@ -212,7 +230,7 @@ class CovariateProcessor:
         write_fields = ["FID", "IID"]
         write_fields = write_fields + ["PC%s" % (x) for x in range(1,41)]
         write_fields = write_fields + ["age", "age_squared", "sex", "wes_batch"]
-        write_fields = write_fields + [self._pheno_name]
+        write_fields = write_fields + self._pheno_names
         # This doesn't matter to python if we didn't find additional covariates. A list of len() == 0 does not lengthen
         # the target list (e.g. 'write_fields')
         write_fields = write_fields + self._found_quantitative_covariates + self._found_categorical_covariates
@@ -229,7 +247,7 @@ class CovariateProcessor:
         num_all_samples = 0
         na_pheno_samples = 0 # for checking number of individuals missing phenotype information
         for indv in base_covar_reader:
-            if indv['22001-0.0'] != "NA": # need to exclude blank row individuals, eid is normally the only thing that shows up, so filter on sex
+            if indv['22001-0.0'] != "NA" and indv['eid'] in self._genetics_samples: # need to exclude blank row individuals, eid is normally the only thing that shows up, so filter on sex
                 indv_writer = {'FID': indv['eid'],
                                'IID': indv['eid']}
                 for PC in range(1,41):
@@ -240,32 +258,44 @@ class CovariateProcessor:
                 indv_writer['age_squared'] = indv_writer['age']**2
                 indv_writer['sex'] = int(indv['22001-0.0'])
                 indv_writer['wes_batch'] = indv['wes.batch']
+                num_all_samples += 1
 
                 # Check if we found additional covariates and make sure this sample has non-null values
-                write_sample = False
+                found_covars = False
                 if len(self._add_covars) > 0:
                     if indv['eid'] in self._add_covars:
-                        write_sample = True
+                        found_covars = True
                         for covariate in self._add_covars[indv['eid']]:
                             indv_writer[covariate] = self._add_covars[indv['eid']][covariate]
                 else:
-                    write_sample = True
+                    found_covars = True
 
-                # exclude based on sex-specific analysis if required:
-                if indv['eid'] in self._genetics_samples:
-                    num_all_samples += 1
-                    if indv['eid'] in self._phenotypes and write_sample:
-                        indv_writer[self._pheno_name] = self._phenotypes[indv['eid']]
-                        if self._sex == 2:
-                            indv_written += 1
-                            combo_writer.writerow(indv_writer)
-                            include_samples.write(indv['eid'] + "\n")
-                        elif self._sex == indv_writer['sex']:
-                            indv_written += 1
-                            combo_writer.writerow(indv_writer)
-                            include_samples.write(indv['eid'] + "\n")
+                found_phenos = False
+                if len(self._pheno_names) == 1:
+                    pheno = self._pheno_names[0]
+                    if indv['eid'] in self._phenotypes[pheno]:
+                        found_phenos = True
+                        indv_writer[pheno] = self._phenotypes[pheno][indv['eid']]
                     else:
                         na_pheno_samples += 1
+                else:
+                    found_phenos = True # Always true because we can exclude NAs later when running phewas
+                    for pheno in self._pheno_names:
+                        if indv['eid'] in self._phenotypes[pheno]:
+                            indv_writer[pheno] = self._phenotypes[pheno][indv['eid']]
+                        else:
+                            indv_writer[pheno] = 'NA'
+
+                # exclude based on sex-specific analysis if required:
+                if found_covars and found_phenos:
+                    if self._sex == 2:
+                        indv_written += 1
+                        combo_writer.writerow(indv_writer)
+                        include_samples.write(indv['eid'] + "\n")
+                    elif self._sex == indv_writer['sex']:
+                        indv_written += 1
+                        combo_writer.writerow(indv_writer)
+                        include_samples.write(indv['eid'] + "\n")
 
         formatted_combo_file.close()
         include_samples.close()
@@ -285,6 +315,7 @@ class CovariateProcessor:
 
         # Print to ensure that total number of individuals is consistent between genetic and covariate/phenotype data
         print("{0:65}: {val}".format("Samples with covariates after include/exclude lists applied", val = num_all_samples))
-        print("{0:65}: {val}".format("Number of individuals with NaN/NA phenotype information", val = na_pheno_samples))
+        if len(self._pheno_names) == 1:
+            print("{0:65}: {val}".format("Number of individuals with NaN/NA phenotype information", val = na_pheno_samples))
         print("{0:65}: {val}".format("Number of individuals written to covariate/pheno file", val = indv_written))
         print("{0:65}: {val}".format("Plink individuals written", val = stdout.decode('utf-8').rstrip(' loaded from\n')))
