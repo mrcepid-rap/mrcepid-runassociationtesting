@@ -11,6 +11,8 @@ import tarfile
 import sys
 
 # We have to do this to get modules to run properly on DNANexus while still enabling easy editing in PyCharm
+import dxpy
+
 sys.path.append('/')
 sys.path.append('/runassociationtesting/')
 
@@ -48,12 +50,10 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
                                              gene_ids, sex, is_binary, run_marker_tests, output_prefix, mode)
     association_pack = covariate_processor.association_pack
 
-    if mode == 'extract' or mode == 'phewas':
-        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
-            dxpy.AppError("Must provide gene_ids if running 'extract' or 'phewas' mode without a SNP-list tar.")
-
     # Now do specific analysis depending on selected 'mode':
     if mode == 'burden':
+        if association_pack.is_snp_tar:
+            dxpy.AppError("Burden tests currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes.")
         # Run the selected tool
         if tool == 'bolt':
             print("Running BOLT")
@@ -72,9 +72,13 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
             tool_run = REGENIERunner(association_pack)
 
     elif mode == 'extract':
+        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
+            dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
         tool_run = ExtractVariants(association_pack)
 
     elif mode == 'phewas':
+        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
+            dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
         tool_run = PheWAS(association_pack)
 
     # Create tar of all possible output files
