@@ -7,6 +7,7 @@ https://documentation.dnanexus.com/.
 ### Table of Contents
 
 - [Introduction](#introduction)
+    * [Changelog](#changelog)
     * [Background](#background)
         * [BOLT-LMM](#bolt-lmm)
         * [SAIGE-GENE](#saige-gene)
