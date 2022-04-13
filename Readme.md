@@ -9,40 +9,45 @@ https://documentation.dnanexus.com/.
 - [Introduction](#introduction)
     * [Changelog](#changelog)
     * [Background](#background)
-        * [BOLT-LMM](#bolt-lmm)
-        * [SAIGE-GENE](#saige-gene)
-        * [STAAR](#staar)
-        * [Generalised Linear Models (GLMs)](#generalised-linear-models--glms-)
+        + [Burden Tools Implemented](#burden-tools-implemented)
+            - [1. BOLT-LMM](#1--bolt-lmm--https---alkesgroupbroadinstituteorg-bolt-lmm-bolt-lmm-manualhtml-)
+            - [2. SAIGE-GENE+](#2--saige-gene---https---githubcom-saigegit-saige-)
+            - [3. STAAR](#3--staar--https---githubcom-xihaoli-staar-)
+            - [4. Generalised Linear Models (GLMs)](#4-generalised-linear-models--glms-)
     * [Dependencies](#dependencies)
         + [Docker](#docker)
         + [Resource Files](#resource-files)
 - [Methodology](#methodology)
     * [Covariate processing](#covariate-processing)
-    * [BOLT](#bolt)
-        + [Inputs](#inputs)
-        + [Command Line Example](#command-line-example)
-        + [Outputs](#outputs)
-    * [SAIGE-GENE](#saige-gene)
-        + [Inputs](#inputs-1)
-        + [Command Line Example](#command-line-example-1)
-        + [Outputs](#outputs-1)
-    * [STAAR](#staar)
-        + [Inputs](#inputs-2)
-        + [Command line example](#command-line-example)
-        + [Outputs](#outputs-2)
-    * [GLMs](#glms)
-        + [Inputs](#inputs-3)
-        + [Command line example](#command-line-example-1)
-        + [Outputs](#outputs-3)
+    * [Burden Tests](#burden-tests)
+        + [BOLT](#bolt)
+            - [Inputs](#inputs)
+            - [Command Line Example](#command-line-example)
+            - [Outputs](#outputs)
+        + [SAIGE-GENE](#saige-gene)
+            - [Inputs](#inputs-1)
+            - [Command Line Example](#command-line-example-1)
+            - [Outputs](#outputs-1)
+        + [STAAR](#staar)
+            - [Inputs](#inputs-2)
+            - [Command line example](#command-line-example)
+            - [Outputs](#outputs-2)
+        + [GLMs](#glms)
+            - [Inputs](#inputs-3)
+            - [Command line example](#command-line-example-1)
+            - [Outputs](#outputs-3)
+    * [Variant Extraction](#variant-extraction)
+    * [PheWAS](#phewas)
 - [Running on DNANexus](#running-on-dnanexus)
     * [Inputs](#inputs-4)
+        + [Mode](#mode)
         + [Association Tarballs](#association-tarballs)
         + [Phenotypes File](#phenotypes-file)
         + [Inclusion / Exclusion lists](#inclusion---exclusion-lists)
         + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate--quantitative---categorical--file)
+        + [Gene IDs](#gene-ids)
     * [Outputs](#outputs-4)
     * [Command line example](#command-line-example-2)
-        + [Runtime Examples, System Requirements, and Output Expectations](#runtime-examples--system-requirements--and-output-expectations)
         + [Batch Running](#batch-running)
 
 ## Introduction
@@ -721,7 +726,7 @@ for gene in genes:
 
 !!!TO DO!!!
 
-## Variant Extraction
+### Variant Extraction
 
 This module will extract:
 
@@ -733,7 +738,7 @@ This module will extract:
 This module uses an IDENTICAL methodology to run GLMs as in the GLM `burden` mode as described above. Please see the
 documentation for [that section](#glms) on the basics of running GLM-based burden tests on the RAP.
 
-## PheWAS
+### PheWAS
 
 This module will run a PheWAS on ALL phenotypes in the provided 'phenotype' file. This module uses an IDENTICAL methodology 
 to run GLMs as in the GLM `burden` mode as described above. Please see the documentation for [that section](#glms) 
