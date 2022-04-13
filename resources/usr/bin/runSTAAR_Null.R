@@ -42,8 +42,8 @@ if (cat_covars != "NULL") {
 }
 
 # Load GRM:
-sparse_kinship <- readMM("/test/genetics/sparseGRM_450K_Autosomes_QCd_relatednessCutoff_0.125_2000_randomMarkersUsed.sparseGRM.mtx")
-sparse_kinship_samples <- fread("/test/genetics/sparseGRM_450K_Autosomes_QCd_relatednessCutoff_0.125_2000_randomMarkersUsed.sparseGRM.mtx.sampleIDs.txt")
+sparse_kinship <- readMM("/test/genetics/fixed_rel.sorted.mtx")
+sparse_kinship_samples <- fread("/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt")
 rownames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 colnames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 
@@ -64,11 +64,22 @@ if (length(unique(data_for_STAAR[,sex])) == 1) {
 }
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
-# And run either a linear or logistic model according to is_binary
-if (is_binary) {
-  obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
-} else {
-  obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=gaussian(link="identity"), kins = sparse_kinship)
+# And run either a linear or logistic model according to is_binary, with the NULL set based on relatedness of samples
+if (length(sparse_kinship@x[sparse_kinship@x < 1]) == 0) {
+  cat("No related samples found, using GLM to fit STAAR null")
+  if (is_binary) {
+    obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+  } else {
+    obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="gaussian")
+  }
+  obj_nullmodel$id_include = sparse_kinship@Dimnames[[1]] # This adds a variable to this S3 object make it easier to keep the same samples regardless of model type
+} else{
+  cat("Related samples found, using LMM to fit STAAR null")
+  if (is_binary) {
+    obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
+  } else {
+    obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=gaussian(link="identity"), kins = sparse_kinship)
+  }
 }
 
 # Save the null model:

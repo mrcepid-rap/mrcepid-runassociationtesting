@@ -46,14 +46,15 @@ https://documentation.dnanexus.com/.
 
 ## Introduction
 
-**PLEASE NOTE - ** this applet is very much a work in progress. Please understand that some standard functionalities have
-not been built into this applet. I have tried to document various "TO DOs" within this README where applicable, but it is
-by no means exhaustive!
+**PLEASE NOTE - ** this applet is very much a work in progress. Understand that some standard functionalities within 
+individual tools used by this applet have not yet been implemented. I have tried to document various "TO DOs" within this
+README where applicable, but it is by no means exhaustive!
 
-This applet performs rare variant burden testing using one of four different methods:
+This applet performs rare variant burden testing and associated functions (e.g. extracting variants/samples and various 
+ad hoc tests). Rare variant burden tests are implemented with one of four different methods:
 
 * [BOLT](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html)
-* [SAIGE-GENE](https://github.com/weizhouUMICH/SAIGE/)
+* [SAIGE-GENE+](https://github.com/saigegit/SAIGE)
 * [STAAR](https://github.com/xihaoli/STAAR)
 * GLMs – vanilla linear/logistic models implemented with python's [statsmodels module](https://www.statsmodels.org/stable/index.html)
 
@@ -71,21 +72,51 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 **Note:** This README pertains to data included as part of the DNANexus project "MRC - Variant Filtering" (project-G2XK5zjJXk83yZ598Z7BpGPk)
 
+### Changelog
+
+* v1.0.0 – Initial numbered release.
+  * Made code object oriented for easier maintainability
+  * Added new ‘tool’ option, replaces individual run_xyz flags
+  * Added new ‘mode’ option, current modes are ‘burden’ and ‘extract’. Will add more later.
+  * ExtractVariants is now deprecated. All functionality has been added to ‘runassociationtesting’
+  * Added modified ‘gene_ids’ option. In addition to taking a single-gene, this will also take a comma-separated list of SYMBOLS/ENSTs to process multiple genes at once
+  * Changed how the sparse GRM is built – now using default UKBB
+  * -iassociation_tarballs will now take either a LIST of tarballs, or a single tar file
+  * default output is now assoc_results.tar.gz
+  * added ‘phenoname’ field. Not required, but can now use a phenotype file with more than 3 columns by providing the name of the requested column
+  * Added new ‘phewas’ mode.
+      * providing `phenoname` throws an error
+  * Updated SAIGE to v1.0.1
+      * Implemented faster per-marker tests for SAIGE (similar to BOLT now)
+      * No longer use variance Ratio Estimation
+      * SAIGE works well with updated GRM (i.e. good p. values)
+  * Added a per-SNP test mode
+
 ### Background
 
 One of the primary goals of genetics is to determine if genetic variant(s) have a demonstrable effect on a given phenotype.
 For common variants (MAF > ~.1%), a GWAS approach is typically used with imputed genotypes from genotyping chips. This 
-approach is not as effective as for rare variants (MAF < 0.1%) as the number of individuals that carry a given variant
-may be very small and thus we may not have the required power to identify an association. Thus, aggregation approaches
+approach is not as effective for rare variants (MAF < 0.1%) as the number of individuals that carry a given variant
+may be very small; thus we may not have the required power to identify an association. Aggregation approaches
 are commonly employed whereby variants of a likely similar consequence or effect are "merged" within or across genes to
-perform testing. 
+perform testing. This code performs several functions via a 'mode' flag. Please see the [command-line examples](#command-line-example)
+below for more information on how this works. In brief, this applet has three different modes:
+
+1. Burden Testing via various approaches (`burden`)
+    * See [Burden Tools Implemented](#burden-tools-implemented) for more information
+2. Variant Extraction (`extract`)
+    * Extracts variants/samples/phenotypes identically to how set-up is performed for burden testing in point (1.) above.
+3. PheWAS (`phewas`)
+    * Uses a GLM as [described below](#4-generalised-linear-models-glms) to run multiple gene-phenotype combinations at once
+
+#### Burden Tools Implemented
 
 Aggregation can be done in multiple different ways. In this applet, we have implemented four different approaches. We 
-also attempted to implement a fifth, REGENIE, but ran into issues with run-time and compute required. Each of the four 
-implemented approaches has advantages and disadvantages. I have summarised some primary examples in the sections for 
-each tool:
+also attempted to implement a fifth, REGENIE, but ran into issues with run-time and compute required. Implementation of 
+REGENIE is in active development. Each of the four implemented approaches has advantages and disadvantages. I have 
+summarised some primary examples in the sections below for each tool.
 
-#### 1. [BOLT-LMM](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html)
+##### 1. [BOLT-LMM](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html)
 
 Original Publication: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4342297/ 
 
@@ -103,9 +134,9 @@ Disadvantages:
 
 * Cannot handle quantification of number of qualifying variants – only has a binary "yes/no" that an individual has a qualifying variant
 
-#### 2. [SAIGE-GENE](https://github.com/weizhouUMICH/SAIGE/)
+##### 2. [SAIGE-GENE+](https://github.com/saigegit/SAIGE)
 
-Original Publication: https://www.medrxiv.org/content/10.1101/2021.07.12.21260400v1
+Original Publication: https://www.medrxiv.org/content/10.1101/2021.07.12.21260400v2
 
 Like BOLT, SAIGE was originally designed to perform association testing for common variants. Unlike BOLT, the authors of
 SAIGE have adapted it for running rare variant association tests. Crucially, SAIGE implements the [SKAT-O](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3415556/)
@@ -126,7 +157,7 @@ Disadvantages
 * Relatively slow
 * High memory usage
 
-#### 3. [STAAR](https://github.com/xihaoli/STAAR)
+##### 3. [STAAR](https://github.com/xihaoli/STAAR)
 
 Original Publication: https://www.nature.com/articles/s41588-020-0676-4
 
@@ -148,7 +179,7 @@ Disadvantages:
 * Implemented in R as a package rather than as a command-line application (requires creation of wrapper script)
 * Does not natively handle cryptic relatedness
 
-#### 4. Generalised Linear Models (GLMs)
+##### 4. Generalised Linear Models (GLMs)
 
 Original Publication: N/A
 
@@ -160,7 +191,7 @@ please see the [section in the methodology](#glms) that covers GLMs in more deta
 
 Advantages:
 
-* Very fast
+* Relatively fast
 * The least complex model (less of a black box)
 
 Disadvantages:
@@ -230,41 +261,36 @@ RAP at the MRC Epidemiology Unit:
 
 ![](https://github.com/mrcepid-rap/.github/blob/main/images/RAPPipeline.png)
 
-This applet uses the final output of [mrcepid-mergecollapsevariants](https://github.com/mrcepid-rap/mrcepid-mergecollapsevariants.git)
+This applet uses the final output of [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
 to perform rare variant burden testing. As such, the filtering for variants that the user provided beginning with [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
 will determine what variants are processed by this applet.
 
 This applet proceeds in two basic steps:
 
-1. Covariate processing
-2. Rare variant burden testing using selected approaches. For each tool/method, I have documented:
-    1. Select inputs generated by [mrcepid-mergecollapsevariants](https://github.com/mrcepid-rap/mrcepid-mergecollapsevariants.git)
-    2. An example command-line
-    3. Example outputs
+1. Covariate/phenotype processing and individual-level filtering
+2. Running various modules 
+   1. Rare variant burden testing using selected approaches (`burden`). For each tool/method, I have documented:
+       1. Select inputs generated by [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+       2. An example command-line
+       3. Example outputs
+   2. Variant Extraction (`extract`)
+   3. PheWAS (`phewas`)
 
-The user selects the variant test that they want to run at runtime. In theory, one can run all four approaches using one 
-command-line execution, but this may not be feasible due to runtime and compute resources required. Please see the [inputs](#inputs)
+The user selects the variant test/mode that they want to run at runtime. Please see the [inputs](#inputs)
 and [batch running](#batch-running) sections for more information.
-
-In theory, each tool could have been implemented using individual applets. This was decided against in order to simplify
-the inputs provided to each tool. By including covariate and sample filtering within the applet as the first step, we can ensure
-that covariates, samples, and phenotypes are run **identically** for all four tools/methods.
-
-Here we have documented in more detail covariate processing and then the implementation of each of the four tools documented
-in the [background](#background) section of this README. Note that when we use the term "<file_prefix>", that refers to the
-prefix that was provided to mrcepid-collapsevariants and mrcepid-mergecollapsevariants.
 
 ### Covariate processing
 
 This applet uses at least two **TAB-DELIMITED** files for providing phenotypes/covariates:
 
-1. A phenotype to test for an association to rare variants
+1. A phenotype to test for an association to rare variants. This file can have multiple phenotypes. The specific phenotype 
+   to test can be specified via the command-line or all phenotypes can be tested if running in 'PheWAS' mode. 
 
-Please see [inputs](#inputs) for how this file is structured.   
+Please see [inputs](#inputs) for how this file is structured.
 
 2. Standard covariates to control for during association testing:
 
-The standard covariates file is currently hard-coded into the applet. This file has the DNANexus hash-id of: `file-G7PzVbQJJv8kz6QvP41pvKVg`
+A default set of standard covariates is current used by this applet applet. This file has the DNANexus hash-id of: `file-G8ZvZFQJJv8qZQ9P12KVjYjy`
 
 In brief, this file contain a raw version of the database output from the UK Biobank data 
 [implemented on the UKBiobank RAP](https://dnanexus.gitbook.io/uk-biobank-rap/working-on-the-research-analysis-platform/accessing-phenotypic-data-as-a-file).
@@ -298,9 +324,25 @@ Covariates and samples are processed in the following steps:
 5. Create a plink file of the genetic data that only includes individuals that will be used during rare variant burden 
    testing.
    
-Individual rare variant burden tests are then run according to [user input](#inputs). 
+One of three individual tools are then run according to [user input](#inputs):
 
-### BOLT
+1. Burden tests as implemented in BOLT, SAIGE, STAAR, or a GLM
+2. Variant/sample extraction
+3. PheWAS on a set of gene/phenotype combinations
+
+Methodology for each is given in the following sections.
+
+### Burden Tests
+
+In theory, each tool could have been implemented using individual applets. This was decided against in order to simplify
+the inputs provided to each tool. By including covariate and sample filtering within the applet as the first step, we can ensure
+that covariates, samples, and phenotypes are run **identically** for all four tools/methods.
+
+Here we have documented in more detail covariate processing and then the implementation of each of the four tools documented
+in the [background](#background) section of this README. Note that when we use the term "<file_prefix>", that refers to the
+prefix that was provided to mrcepid-collapsevariants and mrcepid-mergecollapsevariants.
+
+#### BOLT
 
 BOLT roughly proceeds in two steps. First, BOLT computes a genetic relatedness matrix (GRM) from genetic data curated during
 the previous step of this applet. Next, it tests for the association a variant provided in a bgen file for an association
@@ -309,7 +351,7 @@ we have created a "dummy" bgen file that instead encodes presence/absence of a q
 variable is then used by BOLT to test for an association with a given phenotype. We test for both per-gene and per-marker 
 (i.e. SNV/InDels) association with our phenotype of interest.
 
-#### Inputs
+##### Inputs
 
 A bgen file of genes to test for association with our phenotype of interest. This file is initially formated as a plink 
 .ped file like the following:
@@ -346,7 +388,7 @@ The above steps are done per-chromosome and provided via the `--bgenSamplesFileL
 To perform per-marker tests, we simply convert the VCF file used for [SAIGE](#saige-gene) into bgen format using plink2, 
 and run exactly the same command as described below. Inputs and outputs are essentially identical. 
 
-#### Command Line Example
+##### Command Line Example
 
 ```commandline
 bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                       # Filtered genetic data
@@ -372,7 +414,7 @@ bolt --bfile=UKBB_200K_Autosomes_QCd_WBA /                                      
 
 **Note:** BOLT does not differentiate between binary and continuous traits.
 
-#### Outputs
+##### Outputs
 
 Four files:
 
@@ -383,21 +425,21 @@ Four files:
    (i.e. output *excludes* the `P_BOLT_LMM` column). Additional columns contain per-gene information derived from in the
    file `transcripts.tsv.gz (file-G7xyzF8JJv8kyV7q5z8VV3Vb)` in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. These columns include:
    
-| column name       | description |
-| ----------------- | ----------- |
+| column name       | description                                                                                                                               |
+| ----------------- |-------------------------------------------------------------------------------------------------------------------------------------------|
 | ENST              | ENSMBL ENST ID. Will normally be the ENST ID that corresponds to MANE transcript or the ENSEMBL canonical transcript except in rare cases |
-| chrom             | chromosome of this gene *without* the 'chr' prefix |
-| start             | transcription start coordinate in hg38 |
-| end               | transcription stop coordinate in hg38 |
-| ENSG              | ENSEMBL ENSG corresponding to ENST |
-| MANE              | MANE v0.93 transcript |
-| transcript length | end - start |
-| SYMBOL            | HGNC gene name |
-| CANONICAL         | Is ENST the ENSEMBL canonical transcript? |
-| BIOTYPE           | Should *always* be protein_coding |
-| cds_length        | translation stop - translation start accounting for intron length |
-| coord             | formatted 'chrom:start-end' with chr prefix for aid in lookup on databases |
-| manh.pos          | relative position in the genome on a scale of 0-1 (chr1:1 = 0, chrY:14522573 = 1) for easy manhattan plot plotting |
+| chrom             | chromosome of this gene *without* the 'chr' prefix                                                                                        |
+| start             | transcription start coordinate in hg38                                                                                                    |
+| end               | transcription stop coordinate in hg38                                                                                                     |
+| ENSG              | ENSEMBL ENSG corresponding to ENST                                                                                                        |
+| MANE              | MANE v0.93 transcript                                                                                                                     |
+| transcript length | end - start                                                                                                                               |
+| SYMBOL            | HGNC gene name                                                                                                                            |
+| CANONICAL         | Is ENST the ENSEMBL canonical transcript?                                                                                                 |
+| BIOTYPE           | Should *always* be protein_coding                                                                                                         |
+| cds_length        | translation stop - translation start accounting for intron length                                                                         |
+| coord             | formatted 'chrom:start-end' with chr prefix for aid in lookup on databases                                                                |
+| manh.pos          | relative position in the genome on a scale of 0-1 (chr1:1 = 0, chrY:14522573 = 1) for easy manhattan plot plotting                        |
 
    **BIG NOTE:** If a transcript ID is NOT found in `transcripts.tsv.gz`, this information WILL NOT be included in final
    output.
@@ -421,9 +463,9 @@ Four files:
 4. The genotype-based results from the first step of BOLT named like `<output_prefix>.bolt.stats.gz` (where `<output_prefix>` 
    is identical to that provided to the `output_prefix` input).
 
-### SAIGE-GENE
+#### SAIGE-GENE
 
-#### Inputs
+##### Inputs
 
 SAIGE-GENE requires 2 input files that are created during mrcepid-mergecollapsevariants:
 
@@ -450,7 +492,7 @@ ENST000000002 1:2000000_G/C 1:2000030_A/C   1:2000050_ATC/A 1:2000000_G/GATC
 
 Files are created per-chromosome to enable faster parallelization on DNA Nexus.
 
-#### Command Line Example
+##### Command Line Example
 
 SAIGE-GENE proceedes in two steps:
 
@@ -500,11 +542,11 @@ step2_SPAtests.R
 
 **Note:** I have shortened the name of the sparseSigmaFile for readability (see source code).
 
-#### Outputs
+##### Outputs
 
 !!!TO DO!!!
 
-### STAAR
+#### STAAR
 
 STAAR is unique here in that it does not have a command-line tool associated with it and is instead provided as an R package.
 To run STAAR, we created two R wrapper scripts that 
@@ -517,7 +559,7 @@ These commented scripts are provided in this repository at:
 
 `resources/usr/bin/`
 
-#### Inputs
+##### Inputs
 
 STAAR requires the following inputs:
 
@@ -553,7 +595,7 @@ varID   chrom   pos ENST    column
 Currently, we use the same GRM created for SAIGE as part of the [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms). 
 This input is hard-coded into the `runSTAAR.R` script.
 
-#### Command line example
+##### Command line example
 
 This example command-line is to run both scripts that we have created for this applet for one chromosome. All commands are
 space delimited:
@@ -592,7 +634,7 @@ for (gene in genes) {
 }
 ```
 
-#### Outputs
+##### Outputs
 
 We output a single tab-delimited file for all gene/mask/MAF combinations (`<output_prefix>.STAAR_results.tsv.gz`). A tabix
 index for easy querying is also provided (`*.tbi`). Per-transcript information is identical to that described [for BOLT](#outputs), 
@@ -609,12 +651,12 @@ above. STAAR-specific columns include:
 
 We also output the null model in R RDS format (`<output_prefix>.STAAR_null.rds`).
 
-### GLMs
+#### GLMs
 
 The method to perform Generalised Linear Models (GLMs) as part of this applet is implemented using the [statsmodels](https://www.statsmodels.org/stable/index.html)
 python package.
 
-#### Inputs
+##### Inputs
 
 GLMs require 2 files:
 
@@ -643,7 +685,7 @@ ENST000000001
 ENST000000002
 ```
 
-#### Command line example
+##### Command line example
 
 This method has no command line as it is run within the applet's source code. For specifics on the method used, please see 
 the applet source code. Briefly, this runs in two basic steps:
@@ -674,26 +716,44 @@ for gene in genes:
                         family=family).fit()
 ```
 
-#### Outputs
+##### Outputs
 
 !!!TO DO!!!
+
+## Variant Extraction
+
+This module will extract:
+
+1. The exact phenotype/covariate information in tabular format that was used as input for burden tests
+2. Individual-level information describing genotype-sample pairs
+3. Variant-level information for all variants included in a test
+4. A basic linear model to confirm the correct mask/maf combination was used to generate the results output by this applet
+
+This module uses an IDENTICAL methodology to run GLMs as in the GLM `burden` mode as described above. Please see the
+documentation for [that section](#glms) on the basics of running GLM-based burden tests on the RAP.
+
+## PheWAS
+
+This module will run a PheWAS on ALL phenotypes in the provided 'phenotype' file. This module uses an IDENTICAL methodology 
+to run GLMs as in the GLM `burden` mode as described above. Please see the documentation for [that section](#glms) 
+on the basics of running GLM-based burden tests on the RAP.
 
 ## Running on DNANexus
 
 ### Inputs
 
-There are a standard set of command-line inputs that may be useful to change for the typical user. 
+There are a standard set of command-line inputs that may be useful to change for the typical user. Note that the required
+inputs change depending on the selected `mode`. Please see the detailed section on [mode](#mode) below for more information.
 
 | input                   | description                                                                                                                                                                                             |
 |-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | association_tarballs    | Hash ID(s) of the output from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants) that you wish to use for rare variant burden testing. See below for more information. |
+| tool                    | Tool to use for the burden testing module. **MUST** be one of 'bolt', 'saige', 'staar', 'glm', or 'regenie'. Case must also match.                                                                      |
+| mode                    | Mode to run this applet in. **MUST** be one of 'burden', 'extract', or 'phewas'. Case must match.                                                                                                       |
+| gene_ids                | A comma-separated list of genes (either SYMBOL or ENST) to use for phewas or extract mode.                                                                                                             |
 | phenofile               | Phenotypes file – see below for more information on the format of this file                                                                                                                             |
-| run_bolt                | run BOLT? **[FALSE]**                                                                                                                                                                                   |
-| run_saige               | run SAIGE? **[FALSE]**                                                                                                                                                                                  |
-| run_staar               | run STAAR? **[FALSE]**                                                                                                                                                                                  |
-| run_linear_model        | run GLMs? **[FALSE]**                                                                                                                                                                                   |
-| run_all                 | run all of the above **[FALSE]**                                                                                                                                                                        |
-| run_marker_tests        | run SAIGE/BOLT per-marker tests? **[TRUE]**                                                                                                                                                             |
+| phenoname               | A single phenotype name to run association tests for. This allows for a user to provide a single phenotype file with multiple phenotypes and select one phenotype to run.                               |
+| run_marker_tests       | run SAIGE/BOLT per-marker tests? **[TRUE]**                                                                                                                                                             |
 | is_binary               | Is the given trait in the phenofile binary?                                                                                                                                                             |
 | sex                     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                                         |
 | inclusion_list          | List of samples (eids) to include in analysis **[None]**                                                                                                                                                |
@@ -708,21 +768,35 @@ mostly have to do with the underlying inputs to models that are generated by oth
 sensible defaults for these files and only change them if running from a different set of filtered data.
 
 | input             | description                                                                                                                                | default file (all in `project-G6BJF50JJv8p4PjGB9yy7YQ2`) | 
-|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------| ------- |
-| bgen_index        | index file with information on filtered and annotated UKBB variants                                                                        | `file-G86GJ3jJJv8fbXVB9PQ2pjz6` |
-| transcript_index  | Tab-delimited file of information on transcripts expected by runassociationtesting output                                                  | `file-G7xyzF8JJv8kyV7q5z8VV3Vb` |
-| base_covariates   | base covariates (age, sex, wes_batch, PC1..PC10) file for all WES UKBB participants                                                        | `file-G7PzVbQJJv8kz6QvP41pvKVg` |
-| bed_file          | plink .bed format file from UKBB genetic data, filtered according to [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) | `file-G6qXq38J2vfXKBz44Z8bxf5V` |
-| fam_file          | corresponding .fam file for 'bed_file'                                                                                                     | `file-G6qXvg0J2vffF7Y44VFJb7jB` |
-| bim_file          | corresponding .bim file for 'bed_file'                                                                                                     | `file-G6qXvgQJ2vfqY3z64x7x8jPq` |
-| low_MAC_list      | list of low MAC (<100) variants in 'bed_file'                                                                                              | `file-G6qXvq8J2vfYY6y64Qy23v5b` |
-| sparse_grm        | a sparse GRM for all individuals in 'bed_file' created by SAIGE 'Step0'                                                                    | `file-G6xK1xjJb3g9vz0p236vZ9F5` |
-| sparse_grm_sample | corresponding samples in 'sparse_grm'                                                                                                      | `file-G6xK1z8Jb3g1Fp4j2311JKYF` |
+|-------------------|--------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------|
+| bgen_index        | index file with information on filtered and annotated UKBB variants                                                                        | `file-G86GJ3jJJv8fbXVB9PQ2pjz6`                          |
+| transcript_index  | Tab-delimited file of information on transcripts expected by runassociationtesting output                                                  | `file-G7xyzF8JJv8kyV7q5z8VV3Vb`                          |
+| base_covariates   | base covariates (age, sex, wes_batch, PC1..PC10) file for all WES UKBB participants                                                        | `file-G7PzVbQJJv8kz6QvP41pvKVg`                          |
+| bed_file          | plink .bed format file from UKBB genetic data, filtered according to [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) | `file-G6qXq38J2vfXKBz44Z8bxf5V`                          |
+| fam_file          | corresponding .fam file for 'bed_file'                                                                                                     | `file-G6qXvg0J2vffF7Y44VFJb7jB`                          |
+| bim_file          | corresponding .bim file for 'bed_file'                                                                                                     | `file-G6qXvgQJ2vfqY3z64x7x8jPq`                          |
+| low_MAC_list      | list of low MAC (<100) variants in 'bed_file'                                                                                              | `file-G6qXvq8J2vfYY6y64Qy23v5b`                          |
+| sparse_grm        | a sparse GRM for all individuals in 'bed_file' created by SAIGE 'Step0'                                                                    | `file-G6BJF50JJv8p4PjGB9yy7YQ2`                          |
+| sparse_grm_sample | corresponding samples in 'sparse_grm'                                                                                                      | `file-G6BJF50JJv8p4PjGB9yy7YQ2`                          |
+
+#### Mode
+
+As discussed above, this applet can be run in one of three modes with each of these modes requiring slightly different inputs:
+
+1. `burden` - requires the `tool` option. Providing `gene_ids` does nothing.
+2. `extract` – requires `gene_ids` UNLESS providing a SNP tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+3. `phewas` – requires `gene_ids` UNLESS providing a SNP tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+
+**Big Note** – tool outputs and functionality is further changed depending on whether the provided tarball was generated using a 
+list of variant IDs from mrcepid-collapsevariants.
+
+**Big Note** – PheWAS currently **CANNOT** run continuous and categorical phenotypes at the same time. You must provide
+separate phenotype files and use the `is_binary` flag accordingly. 
 
 #### Association Tarballs
 
-`association_tarballs` takes a list file of DNANexus file-IDs that point to multiple outputs from the 'mergecollapsevariants'. 
-This file is one file-ID per line, like:
+`association_tarballs` takes either a single DNANexus file-ID that points to a single output from the 'mrcepid-collapsevariants' tool **OR** 
+a file with multiple such DNANexus file-IDs. This file is one file-ID per line, like:
 
 ```text
 file-G7z31B0J6F3ZbpGK6J0y2xxF
@@ -746,9 +820,12 @@ pre-collapsed variant files.
 
 A tab-delimited file with three columns and a header. Column 1 and 2 **MUST** be named FID and IID in that order. Column 3 can
 have any non-whitespace name (`pheno_name` below) that represents the phenotype that you want to test. The applet automatically 
-uses this name when performing variant testing and creating output. Values for binary traits MUST be either 0/1/NA/NaN while
-values for continuous traits can be any float or NA/NaN. Individuals with NA/NaN values are automatically excluded during 
-testing.
+uses this name when performing variant testing and creating output. If providing a file with multiple phenotype columns, 
+users **MUST** choose that phenotype to test in `burden` mode using the `phenoname` input. `phenoname` must exactly match 
+the desired column. For `phewas` mode, `phenoname` is not required and **ALL* phenotypes in the provided file will be tested.
+Values for binary traits MUST be either 0/1/NA/NaN while
+values for continuous traits can be any float/int (e.g. 1.42 / 5) or NA/NaN. Individuals with NA/NaN values are 
+automatically excluded during testing.
 
 ```text
 FID IID pheno_name
@@ -794,34 +871,46 @@ above, all covariates will be included with the following command line:
 -icovarfile=covars.txt -icategorical_covariates=catCovar2 quantitative_covariates=quantCovar1,quantCovar3
 ```
 
-**NOTE:** Categorical covariates are never corrected for when running SAIGE!
+#### Gene IDs
+
+Users can provide a comma delimited list of Gene Symbols **OR** Transcript ENST IDs for use during extract/phewas modes.
+For example, the following inputs do the exact same thing:
+
+`-igene_ids=BRCA1,BRCA2,PALB` OR `-gene_ids=ENST00000357654,ENST00000380152,ENST00000261584`
+
+Note that if using SYMBOL, the ID **MUST** match exactly and not represent more than one transcript. All valid SYMBOLs
+and ENST IDs must also be in the file specified by `transcript_index` (default: `file-G7xyzF8JJv8kyV7q5z8VV3Vb`) 
 
 ### Outputs
 
-|output                 | description       |
-|-----------------------|-------------------|
-|output_tarball         |  Output tarball containing test results  |
+|output                 | description                            |
+|-----------------------|----------------------------------------|
+|output_tarball         | Output tarball containing test results |
 
-output_tarball is either named `assoc_stats.tar.gz` by default. If the parameter `output_prefix` is provided a file like (set `-ioutput_prefix="PTV"`):
+output_tarball is either named `assoc_results.tar.gz` by default. If the parameter `output_prefix` is provided a file like (set `-ioutput_prefix="PTV"`):
 
-`PTV.assoc_stats.tar.gz`
+`PTV.assoc_results.tar.gz`
 
-Would be created. This tar.gz file will contain files that are specific to the tool that was requested. 
+Would be created. This tar.gz file will contain files that are specific to the tool and mode that was requested. 
 
-1. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt` (SAIGE-GENE output)
-2. `<file_prefix>.SAIGE_OUT.SAIGE.gene.txt_single` (SAIGE-GENE per-marker output)
-3. `<file_prefix>.SAIGE_OUT.rda` (SAIGE-GENE null model file)
-4. `<file_prefix>.SAIGE_OUT_cate.varianceRatio.txt` (SAIGE-GENE null model file)
-5. `<file_prefix>.STAAR_results.tsv` (STAAR output)
-6. `<file_prefix>.STAAR_null.rds` (STAAR null model in .rds format)
-7. `<file_prefix>.genes.BOLT.stats.tsv.gz` (BOLT per-gene output)
-8. `<file_prefix>.genes.BOLT.stats.tsv.gz.tbi` (BOLT per-gene output index)
-9. `<file_prefix>.marker.BOLT.stats.tsv.gz` (BOLT per-marker output)
-10. `<file_prefix>.marker.BOLT.stats.tsv.gz.tbi` (BOLT per-marker output index)
-11. `<file_prefix>.stats.gz` (BOLT raw genotype output)
-12. `<file_prefix>.lm_stats.tsv` (GLM output)
+1. burden:
+   1. `<file_prefix>.genes.<TOOL>.stats.tsv.gz` (per-gene output)
+   2. `<file_prefix>.genes.<TOOL>.stats.tsv.gz.tbi` (per-gene output index)
+   3. `<file_prefix>.marker.<TOOL>.stats.tsv.gz` (per-marker output [when requested for BOLT / SAIGE])
+   4. `<file_prefix>.marker.<TOOL>.stats.tsv.gz.tbi` (per-marker output index [when requested for BOLT / SAIGE])
 
-Please see each tool's respective output section for more information on these outputs.
+    Please see each tool's respective output section for more information on these outputs and additional tool-specific output
+files.
+
+2. extract:
+   1. `<output_prefix>.<GENE>.variant_table.tsv` (a table of per-variant information similar to that generated by VEP annotation)
+   2. `<output_prefix>.<GENE>.carriers_formated.tsv` (a table of individual-variant pairs with genotype)
+   3. `<output_prefix>.genes.glm.stats.tsv` (a table similar to that for burden testing GLM output providing summary GLM results for all genes analysed)
+   4. `<output_prefix>.phenotypes_covariates.formatted.tsv` (a table of individual/covariate/phenotype information identical to that used by internal methods for burden testing)
+
+3. phewas:
+   1. `<output_prefix>.genes.glm.stats.tsv.gz` (per-gene/phenotype information identical to that for a burden GLM run)
+   2. `<output_prefix>.genes.glm.stats.tsv.gz.tbi` (the associated index)
 
 ### Command line example
 
@@ -832,34 +921,52 @@ https://github.com/mrcepid-rap
 
 This applet can be run in a few different ways:
 
-1. Run one tool/method at a time:
+1. Run a BOLT burden test:
 
 ```commandline
 dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
+        -imode=burden
+        -itool=bolt
         -iassociation_tarballs=file-G7zPvZ0JJv8v06j8Gv2ppxpJ \
         -iphenofile=file-G5PFv00JXk80Qfx04p9X56X5 \
         -iis_binary=true \
+        -iinclusion_list=file-G6qXvjjJ2vfQGPp04ZGf6ygj
         -ioutput_prefix="T2D.bolt" \
-        -isex=2 \
-        -irun_bolt=true
+        -isex=2
 ```
 
 **Note**: The above command line DOES NOT have an inclusion/exclusion list. Be sure to consider the individuals that you
 keep for your model!
 
-2. Run all tools/methods:
+**Note:** boolean parameters must be provided in json-compatible case ('true' or 'false').
+
+2. Extract HC PTVs and samples for the gene BRCA2 from a single tarball:
 
 ```commandline
 dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
-        -iassociation_tarballs=file-G7zPvZ0JJv8v06j8Gv2ppxpJ \
+        -imode=extract
+        -igene_ids=BRCA2
+        -iassociation_tarballs=file-G7yYqG0JKx5xg1qP8B6zq0z4 \
         -iphenofile=file-G5PFv00JXk80Qfx04p9X56X5 \
         -iis_binary=true \
-        -ioutput_prefix="T2D.all" \
-        -isex=2 \
-        -irun_all=true
+        -iinclusion_list=file-G6qXvjjJ2vfQGPp04ZGf6ygj
+        -ioutput_prefix="HC_PTV.T2D" \
+        -isex=2
 ```
 
-**Note:** boolean parameters must be provided in json-compatible case ('true' or 'false').
+3. Run a PheWAS on multiple cancer types for multiple masks for BRCA2:
+
+```commandline
+dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
+        -imode=phewas
+        -igene_ids=BRCA2
+        -iassociation_tarballs=file-G7zPvZ0JJv8v06j8Gv2ppxpJ \
+        -iphenofile=file-G8v6YQ8JYVk8XjV31f6zB5z4 \
+        -iis_binary=true \
+        -iinclusion_list=file-G6qXvjjJ2vfQGPp04ZGf6ygj
+        -ioutput_prefix="T2D.phewas" \
+        -isex=2
+```
 
 Brief I/O information can also be retrieved on the command line:
 
@@ -870,17 +977,6 @@ dx run mrcepid-runassociationtesting --help
 I have set a sensible (and tested) default for compute resources on DNANexus for running BOLT and SAIGE. This is baked into the json used for building
 the app (at `dxapp.json`) so setting an instance type when running either of those tools or all tools at once is unnecessary.
 This current default is for a mem3_ssd1_v2_x64 instance (64 CPUs, 512 Gb RAM, 2400Gb storage).
-
-#### Runtime Examples, System Requirements, and Output Expectations
-
-| Tool | Per-gene p. value | Per-variant p. value | Accurate β / OR | Runtime§ | Cost§ |
-| ---- | ----------------- | -------------------- | --------------- | ------- | ---- |
-| BOLT | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:red">**FALSE**</span> | 17hr21m | £7.33 |
-| SAIGE | <span style="color:green">**TRUE**</span> | <span style="color:orange">**POSSIBLE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:red">**FALSE**</span> | unk | unk |
-| STAAR | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:red">**FALSE**</span> / <span style="color:red">**FALSE**</span> | 10hr53m | £4.60 |
-| GLM | <span style="color:green">**TRUE**</span> | <span style="color:red">**FALSE**</span> | <span style="color:green">**TRUE**</span> / <span style="color:green">**TRUE**</span> | unk | unk |
-
-§Numbers are representative runtimes and cost for a real analysis testing the association of rare variant burden on having type II diabetes.
 
 #### Batch Running
 
