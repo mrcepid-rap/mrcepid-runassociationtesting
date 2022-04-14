@@ -22,8 +22,10 @@ cat_covars = args[5]
 # Load covariates:
 data_for_STAAR <- fread(covariates_file)
 
-# Set covariates and determine if there are additional covariates we need to consider:
+# Set covariates
 data.cols <- c("FID", "age", "age_squared", "wes_batch", "sex", paste0("PC", seq(1,10)), pheno_name)
+
+# Determine if there are additional covariates we need to consider:
 if (quant_covars != "NULL") {
   quant_covars <- strsplit(quant_covars,",")[[1]]
   data.cols <- c(data.cols, quant_covars)

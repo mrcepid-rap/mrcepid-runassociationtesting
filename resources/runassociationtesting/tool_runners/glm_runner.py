@@ -80,7 +80,8 @@ class GLMRunner:
                                                   genotype_table = genotype_packs[model],
                                                   gene = gene,
                                                   mask_name = model,
-                                                  mode = self._association_pack.mode)
+                                                  mode = self._association_pack.mode,
+                                                  is_binary = self._association_pack.is_binary)
                 else:
                     for gene in genes_to_run:
                         thread_utility.launch_job(self._linear_model_genes,
