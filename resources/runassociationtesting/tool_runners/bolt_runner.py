@@ -134,7 +134,7 @@ class BOLTRunner:
         transcripts_table = transcripts_table.drop(columns=['syn.count','fail.cat','fail'])
 
         # Test what columns we have in the 'SNP' field so we can name them...
-        field_one = bolt_table_gene.iloc[1]
+        field_one = bolt_table_gene.iloc[0]
         field_one = field_one['SNP'].split("-")
         field_names = ['ENST']
         if len(field_one) == 2: # This is the bare minimum, always name first column ENST, and second column 'var1'

@@ -316,7 +316,7 @@ class GLMRunner:
             transcripts_table = transcripts_table.loc[genes_to_run]
 
         # Test what columns we have in the 'SNP' field so we can name them...
-        field_one = glm_table.iloc[1]
+        field_one = glm_table.iloc[0]
         field_one = field_one['maskname'].split("-")
         field_names = []
         if len(field_one) == 2: # This could be the standard naming format... check that column [1] is MAF/AC

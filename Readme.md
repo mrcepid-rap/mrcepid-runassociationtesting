@@ -980,9 +980,15 @@ Brief I/O information can also be retrieved on the command line:
 dx run mrcepid-runassociationtesting --help
 ```
 
-I have set a sensible (and tested) default for compute resources on DNANexus for running BOLT and SAIGE. This is baked into the json used for building
-the app (at `dxapp.json`) so setting an instance type when running either of those tools or all tools at once is unnecessary.
-This current default is for a mem3_ssd1_v2_x64 instance (64 CPUs, 512 Gb RAM, 2400Gb storage).
+#### Selecting an Instance Type
+
+I have set a sensible (and tested) default for compute resources on DNANexus for running burden tests. This is baked into the json used for building
+the app (at `dxapp.json`) so setting an instance type when running any of these tools is unnecessary. This current 
+default is for a mem3_ssd1_v2_x64 instance (64 CPUs, 512 Gb RAM, 2400Gb storage).
+
+When using the other modules in this applet (`extract` or `phewas`) it may be pertinent to ease instance requirements. Any 
+of the mem3_ssd1_v2_xYY instance types ae suitable for this applet, where YY represents a modified CPU requirement. As 
+an example, when running `extract` for a single gene, it is only necessary to have 8 cpus (e.g. instance mem3_ssd1_v2_x8).
 
 #### Batch Running
 

@@ -8,11 +8,10 @@ library(data.table)
 # Read in inputs. They are:
 # 1. [1] A sparse matrix[i][j] where i = samples and j = variants
 # 2. [2] Variants file that has the same length as j with variant IDs, positions, and MAF
-# 3. [3] Annotations file that has the same length as j with variant gene information
-# 4. [4] The null model file from runSTAAR_Null.R
-# 5. [5] Pheno name for including in output table
-# 6. [6] File output prefix
-# 7. [7] Current chromosome being run for output purposes
+# 3. [3] The null model file from runSTAAR_Null.R
+# 4. [4] Pheno name for including in output table
+# 5. [5] File output prefix
+# 6. [6] Current chromosome being run for output purposes
 args = commandArgs(trailingOnly = T)
 matrix_file = args[1]
 variants_file = args[2]

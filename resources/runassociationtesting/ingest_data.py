@@ -54,9 +54,9 @@ class IngestData:
         dxpy.download_dxfile(dxpy.DXFile(low_MAC_list).get_id(), 'genetics/UKBB_450K_Autosomes_QCd.low_MAC.snplist')
         # This is the sparse matrix
         dxpy.download_dxfile(dxpy.DXFile(sparse_grm).get_id(),
-                             'genetics/fixed_rel.sorted.mtx')
+                             'genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx')
         dxpy.download_dxfile(dxpy.DXFile(sparse_grm_sample).get_id(),
-                             'genetics/fixed_rel.sorted.mtx.sampleIDs.txt')
+                             'genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt')
 
     # Get covariate/phenotype data:
     def _ingest_covariates(self, base_covariates: dict, phenofile: dict, covarfile: dict):
@@ -87,7 +87,7 @@ class IngestData:
                 if exists(tarball_prefix + ".SNP.BOLT.bgen"):
                     self.is_snp_tar = True
             else:
-                dxpy.AppError("Provided association tarball (" + dxtarballs.describe()['id'] + ") is not a tar.gz file")
+                raise dxpy.AppError("Provided association tarball (" + dxtarballs.describe()['id'] + ") is not a tar.gz file")
         else:
             # Likely to be a list of tarballs, download and extract...
             dxpy.download_dxfile(dxtarballs, "tarball_list.txt")
@@ -105,7 +105,7 @@ class IngestData:
                     tar = tarfile.open(tarball_name, "r:gz")
                     tar.extractall()
                     if exists(tarball_prefix + ".SNP.BOLT.bgen"):
-                        dxpy.AppError("Cannot run masks from a SNP list (" + dxtarballs.describe()['id'] + ") when running tarballs as batch...")
+                        raise dxpy.AppError("Cannot run masks from a SNP list (" + dxtarballs.describe()['id'] + ") when running tarballs as batch...")
 
 
     # Grab the entire WES variant data in bgen format

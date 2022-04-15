@@ -36,7 +36,7 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
     # Check required options fit before running anything:
     if mode == 'burden':
         if tool is None:
-            dxpy.AppError("Must provide a tool if running 'burden' mode.")
+            raise dxpy.AppError("Must provide a tool if running 'burden' mode.")
 
     # Grab the data / docker resources necessary to run with the 'IngestData' class:
     ingested_data = IngestData(association_tarballs, phenofile, covarfile, inclusion_list, exclusion_list,
@@ -53,7 +53,7 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
     # Now do specific analysis depending on selected 'mode':
     if mode == 'burden':
         if association_pack.is_snp_tar:
-            dxpy.AppError("Burden tests currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes.")
+            raise dxpy.AppError("Burden tests currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes.")
         # Run the selected tool
         if tool == 'bolt':
             print("Running BOLT")
@@ -73,12 +73,12 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
 
     elif mode == 'extract':
         if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
-            dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
+            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
         tool_run = ExtractVariants(association_pack)
 
     elif mode == 'phewas':
         if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
-            dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
+            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
         tool_run = PheWAS(association_pack)
 
     # Create tar of all possible output files

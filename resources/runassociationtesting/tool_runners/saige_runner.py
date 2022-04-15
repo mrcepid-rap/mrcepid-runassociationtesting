@@ -81,8 +81,8 @@ class SAIGERunner:
                     '--isCovariateTransform=FALSE ' \
                     '--sampleIDColinphenoFile=IID ' \
                     '--outputPrefix=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT ' \
-                    '--sparseGRMFile=/test/genetics/fixed_rel.sorted.mtx ' \
-                    '--sparseGRMSampleIDFile=/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt ' \
+                    '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
+                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                     '--nThreads=' + str(self._association_pack.threads) + ' ' \
                     '--LOCO=FALSE ' \
                     '--skipModelFitting=FALSE ' \
@@ -150,8 +150,8 @@ class SAIGERunner:
                 '--vcfFile=/test/' + tarball_prefix + '.' + chromosome + '.saige_input.vcf.gz ' \
                 '--vcfField=GT ' \
                 '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
-                '--sparseGRMFile=/test/genetics/fixed_rel.sorted.mtx ' \
-                '--sparseGRMSampleIDFile=/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt ' \
+                '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
+                '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                 '--LOCO=FALSE ' \
                 '--SAIGEOutputFile=/test/' + tarball_prefix + '.' + chromosome + '.SAIGE_OUT.SAIGE.gene.txt ' \
                 '--groupFile=/test/' + tarball_prefix + '.' + chromosome + '.SAIGE_v1.0.groupFile.txt ' \
@@ -177,8 +177,8 @@ class SAIGERunner:
                     '--bgenFileIndex=/test/' + chromosome + '.markers.bgen.bgi ' \
                     '--sampleFile=/test/' + chromosome + '.markers.saige.sample ' \
                     '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
-                    '--sparseGRMFile=/test/genetics/fixed_rel.sorted.mtx ' \
-                    '--sparseGRMSampleIDFile=/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt ' \
+                    '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
+                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                     '--SAIGEOutputFile=/test/' + chromosome + '.SAIGE_OUT.SAIGE.markers.txt ' \
                     '--LOCO=FALSE ' \
                     '--is_output_moreDetails=TRUE ' \

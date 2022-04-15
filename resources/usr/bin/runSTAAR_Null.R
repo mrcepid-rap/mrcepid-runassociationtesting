@@ -7,7 +7,7 @@ library(data.table)
 
 # Read in inputs. They are:
 # 1. [1] Filtered covariates + phenotypes file
-# 2. [2] Phenotype name. Must be identical to some column in [4]
+# 2. [2] Phenotype name. Must be identical to some column in [1]
 # 3. [3] Boolean flag for if our phenotype is binary
 # 4. [4] Additional quantitative covariates
 # 5. [5] Additional categorical covariates
@@ -44,8 +44,8 @@ if (cat_covars != "NULL") {
 }
 
 # Load GRM:
-sparse_kinship <- readMM("/test/genetics/fixed_rel.sorted.mtx")
-sparse_kinship_samples <- fread("/test/genetics/fixed_rel.sorted.mtx.sampleIDs.txt")
+sparse_kinship <- readMM("/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx")
+sparse_kinship_samples <- fread("/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt")
 rownames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 colnames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 
@@ -67,7 +67,7 @@ if (length(unique(data_for_STAAR[,sex])) == 1) {
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
 # And run either a linear or logistic model according to is_binary, with the NULL set based on relatedness of samples
-if (length(sparse_kinship@x[sparse_kinship@x < 1]) == 0) {
+if (length(sparse_kinship@x[sparse_kinship@x < 0.5]) == 0) {
   cat("No related samples found, using GLM to fit STAAR null")
   if (is_binary) {
     obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
