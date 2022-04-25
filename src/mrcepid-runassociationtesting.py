@@ -52,8 +52,8 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
 
     # Now do specific analysis depending on selected 'mode':
     if mode == 'burden':
-        if association_pack.is_snp_tar:
-            raise dxpy.AppError("Burden tests currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes.")
+        if association_pack.is_snp_tar and tool is not 'glm':
+            raise dxpy.AppError("Burden tests other than GLMs currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes or change tool to 'glm'.")
         # Run the selected tool
         if tool == 'bolt':
             print("Running BOLT")

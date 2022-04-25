@@ -1,4 +1,5 @@
 import csv
+
 import statsmodels.api as sm
 import numpy as np
 
@@ -35,16 +36,11 @@ class GLMRunner:
         # 1. Do setup for the linear models.
         # This will load all variants, genes, and phenotypes into memory to allow for parallelization
         # This function returns a class of type LinearModelPack containing info for running GLMs
-        # If we are doing a PheWAS mode, we set a flag to not run a null model
         print("Loading data and running null Linear Model")
         self._association_pack = association_pack
-        model_packs = {}
-        for pheno in self._association_pack.pheno_names:
-            returned_pack = self._linear_model_null(pheno)
-            if returned_pack is None:
-                print("Phenotype " + pheno + " has no individuals after filtering, skipping...")
-            else:
-                model_packs[pheno] = returned_pack
+        returned_pack = self._linear_model_null(self._association_pack.pheno_names[0])
+        if returned_pack is None:
+            raise dxpy.AppError("Phenotype " + returned_pack.phenoname + " has no individuals after filtering, exiting...")
 
         # 2. Load the tarballs INTO separate genotypes dictionaries
         print("Loading Linear Model genotypes")
@@ -54,7 +50,7 @@ class GLMRunner:
                                        thread_factor=2)
 
         for tarball_prefix in association_pack.tarball_prefixes:
-            thread_utility.launch_job(self._load_tarball_linear_model,
+            thread_utility.launch_job(self.load_tarball_linear_model,
                                       tarball_prefix = tarball_prefix,
                                       is_snp_tar = self._association_pack.is_snp_tar)
         future_results = thread_utility.collect_futures()
@@ -71,26 +67,25 @@ class GLMRunner:
                                        thread_factor=1)
 
         # This 'if/else' allows us to provide a subset of models that we want to run, if selected
-        for pheno in model_packs:
-            for model in genotype_packs:
-                if genes_to_run is None:
-                    for gene in genotype_packs[model]:
-                        thread_utility.launch_job(self._linear_model_genes,
-                                                  linear_model_pack = model_packs[pheno],
-                                                  genotype_table = genotype_packs[model],
-                                                  gene = gene,
-                                                  mask_name = model,
-                                                  mode = self._association_pack.mode,
-                                                  is_binary = self._association_pack.is_binary)
-                else:
-                    for gene in genes_to_run:
-                        thread_utility.launch_job(self._linear_model_genes,
-                                                  linear_model_pack = model_packs[pheno],
-                                                  genotype_table = genotype_packs[model],
-                                                  gene = gene,
-                                                  mask_name = model,
-                                                  mode = self._association_pack.mode,
-                                                  is_binary = self._association_pack.is_binary)
+        for model in genotype_packs:
+            if genes_to_run is None:
+                for gene in genotype_packs[model]:
+                    thread_utility.launch_job(self._linear_model_genes,
+                                              linear_model_pack = returned_pack,
+                                              genotype_table = genotype_packs[model],
+                                              gene = gene,
+                                              mask_name = model,
+                                              is_binary = self._association_pack.is_binary,
+                                              mode = self._association_pack.mode)
+            else:
+                for gene in genes_to_run:
+                    thread_utility.launch_job(self._linear_model_genes,
+                                              linear_model_pack = returned_pack,
+                                              genotype_table = genotype_packs[model],
+                                              gene = gene,
+                                              mask_name = model,
+                                              is_binary = self._association_pack.is_binary,
+                                              mode = self._association_pack.mode)
 
         # 4. Write unformatted results:
         print("Writing initial Linear Model results")
@@ -133,9 +128,6 @@ class GLMRunner:
                                    index_col="FID",
                                    dtype={'IID': str})
         pheno_covars.index = pheno_covars.index.astype(str)
-        # This next line doesn't matter for standard burden tests, but is required for phewas when we don't pre-remove
-        # individuals with NA phenotypes:
-        pheno_covars = pheno_covars[pheno_covars[phenotype].isna() == False]
 
         # Check if a binary trait and make sure there is more than one level after filtering
         if (self._association_pack.is_binary is True and len(pheno_covars[phenotype].value_counts()) > 1) or \
@@ -179,7 +171,7 @@ class GLMRunner:
     # load genes/genetic data we want to test/use:
     # For each tarball prefix, we want to make ONE dict for efficient querying of variants
     @staticmethod
-    def _load_tarball_linear_model(tarball_prefix: str, is_snp_tar: bool) -> tuple:
+    def load_tarball_linear_model(tarball_prefix: str, is_snp_tar: bool) -> tuple:
 
         print("Loading tarball prefix: " + tarball_prefix)
         geno_tables = []
@@ -221,7 +213,7 @@ class GLMRunner:
 
     # Run rare variant association testing using GLMs
     @staticmethod
-    def _linear_model_genes(linear_model_pack: LinearModelPack, genotype_table: dict, gene: str, mask_name: str, mode: str, is_binary: bool) -> dict:
+    def _linear_model_genes(linear_model_pack: LinearModelPack, genotype_table: dict, gene: str, mask_name: str, is_binary: bool, mode: str) -> dict:
 
         # Now successively iterate through each gene and run our model:
         # I think this is straight-forward?
@@ -232,6 +224,7 @@ class GLMRunner:
         internal_frame = pd.DataFrame.copy(linear_model_pack.null_model)
         internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
         n_car = len(internal_frame.loc[internal_frame['has_var'] == 1])
+
         if n_car <= 2:
             gene_dict = {'p_val_init': 'NA',
                          'n_car': n_car,
@@ -257,7 +250,7 @@ class GLMRunner:
 
             # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
             # OR if we are running a phewas, always calculate the full model
-            if sm_results.pvalues['has_var'] < 1e-4 or mode == "phewas":
+            if sm_results.pvalues['has_var'] < 1e-4 or mode == "extract":
 
                 sm_results_full = sm.GLM.from_formula(linear_model_pack.model_formula,
                                                       data=internal_frame,
