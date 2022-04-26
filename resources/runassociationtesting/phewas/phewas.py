@@ -100,7 +100,7 @@ class PheWAS:
                       association_pack.output_prefix + '.SNP.glm.stats.tsv')
             self.outputs = [association_pack.output_prefix + '.SNP.glm.stats.tsv']
         else:
-            self._process_linear_model_outputs(genes_to_run)
+            GLMRunner.process_linear_model_outputs(self._association_pack.output_prefix, genes_to_run)
             self.outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
                             association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
 

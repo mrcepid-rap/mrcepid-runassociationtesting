@@ -115,7 +115,7 @@ class GLMRunner:
                       association_pack.output_prefix + '.SNP.glm.stats.tsv')
             self.outputs = [association_pack.output_prefix + '.SNP.glm.stats.tsv']
         else:
-            self._process_linear_model_outputs(genes_to_run)
+            self.process_linear_model_outputs(self._association_pack.output_prefix, genes_to_run)
             self.outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
                             association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
 
@@ -291,10 +291,11 @@ class GLMRunner:
         return gene_dict
 
     # Process/annotate Linear Model output file
-    def _process_linear_model_outputs(self, genes_to_run: list):
+    @staticmethod
+    def process_linear_model_outputs(output_prefix: str, genes_to_run: list):
 
         # read in the GLM stats file:
-        glm_table = pd.read_csv(open(self._association_pack.output_prefix + ".lm_stats.tmp", 'r'), sep = "\t")
+        glm_table = pd.read_csv(open(output_prefix + ".lm_stats.tmp", 'r'), sep = "\t")
 
         # Now process the gene table into a useable format:
         # First read in the transcripts file
@@ -327,7 +328,7 @@ class GLMRunner:
 
         # Now merge the transcripts table into the gene table to add annotation and the write
         glm_table = pd.merge(transcripts_table, glm_table, on='ENST', how="left")
-        with open(self._association_pack.output_prefix + '.genes.glm.stats.tsv', 'w') as gene_out:
+        with open(output_prefix + '.genes.glm.stats.tsv', 'w') as gene_out:
 
             # Sort just in case
             glm_table = glm_table.sort_values(by=['chrom','start','end'])
@@ -336,7 +337,7 @@ class GLMRunner:
             gene_out.close()
 
             # And bgzip and tabix...
-            cmd = "bgzip /test/" + self._association_pack.output_prefix + '.genes.glm.stats.tsv'
+            cmd = "bgzip /test/" + output_prefix + '.genes.glm.stats.tsv'
             run_cmd(cmd, True)
-            cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + self._association_pack.output_prefix + '.genes.glm.stats.tsv.gz'
+            cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + output_prefix + '.genes.glm.stats.tsv.gz'
             run_cmd(cmd, True)
