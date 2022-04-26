@@ -1,6 +1,7 @@
 import csv
 import numpy as np
 import statsmodels.api as sm
+from statsmodels.tools.sm_exceptions import PerfectSeparationError
 
 from ..association_pack import AssociationPack
 from ..association_resources import *
@@ -125,40 +126,49 @@ class PheWAS:
         # Calculate Number of Carriers
         n_car = len(model_dictionary.loc[model_dictionary['has_var'] == 1])
 
+        # Default return:
+        gene_dict = {'p_val_init': 'NA',
+                     'n_car': n_car,
+                     'n_model': len(model_dictionary['IID']),
+                     'ENST': gene,
+                     'maskname': mask_name,
+                     'pheno_name': phenoname,
+                     'p_val_full': 'NA',
+                     'effect': 'NA',
+                     'std_err': 'NA'}
+        if is_binary:
+            gene_dict['n_noncar_affected'] = 'NA'
+            gene_dict['n_noncar_unaffected'] = 'NA'
+            gene_dict['n_car_affected'] = 'NA'
+            gene_dict['n_car_unaffected'] = 'NA'
+
         if n_car <= 2:
-            gene_dict = {'p_val_init': 'NA',
-                         'n_car': n_car,
-                         'n_model': len(model_dictionary['IID']),
-                         'ENST': gene,
-                         'maskname': mask_name,
-                         'pheno_name': phenoname,
-                         'p_val_full': 'NA',
-                         'effect': 'NA',
-                         'std_err': 'NA'}
-            if is_binary:
-                gene_dict['n_noncar_affected'] = 'NA'
-                gene_dict['n_noncar_unaffected'] = 'NA'
-                gene_dict['n_car_affected'] = 'NA'
-                gene_dict['n_car_unaffected'] = 'NA'
+            return gene_dict
         else:
-            sm_results = sm.GLM.from_formula(formula,
-                                             data=model_dictionary,
-                                             family=sm.families.Binomial() if is_binary else sm.families.Gaussian()).fit()
-            gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
-                         'n_car': n_car,
-                         'n_model': sm_results.nobs,
-                         'ENST': gene,
-                         'maskname': mask_name,
-                         'pheno_name': phenoname,
-                         'p_val_full': sm_results.pvalues['has_var'],
-                         'effect': sm_results.params['has_var'],
-                         'std_err': sm_results.bse['has_var']}
+            try:
+                sm_results = sm.GLM.from_formula(formula,
+                                                 data=model_dictionary,
+                                                 family=sm.families.Binomial() if is_binary else sm.families.Gaussian()).fit()
 
-            # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
-            if is_binary:
-                gene_dict['n_noncar_affected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=phenoname)))
-                gene_dict['n_noncar_unaffected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=phenoname)))
-                gene_dict['n_car_affected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 1', phenoname=phenoname)))
-                gene_dict['n_car_unaffected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 0', phenoname=phenoname)))
+                gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
+                             'n_car': n_car,
+                             'n_model': sm_results.nobs,
+                             'ENST': gene,
+                             'maskname': mask_name,
+                             'pheno_name': phenoname,
+                             'p_val_full': sm_results.pvalues['has_var'],
+                             'effect': sm_results.params['has_var'],
+                             'std_err': sm_results.bse['has_var']}
 
-        return gene_dict
+                # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
+                if is_binary:
+                    gene_dict['n_noncar_affected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=phenoname)))
+                    gene_dict['n_noncar_unaffected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=phenoname)))
+                    gene_dict['n_car_affected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 1', phenoname=phenoname)))
+                    gene_dict['n_car_unaffected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 0', phenoname=phenoname)))
+
+                return gene_dict
+
+            except PerfectSeparationError:
+
+                return gene_dict
