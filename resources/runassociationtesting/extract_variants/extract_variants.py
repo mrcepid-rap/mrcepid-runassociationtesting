@@ -140,8 +140,8 @@ class ExtractVariants:
                                      sep="\t",
                                      names=['CHROM','POS','varID','REF','ALT','IID','GT'])
 
-        variant_file = output_prefix + "." + gene_info['SYMBOL'] + '.variant_table.tsv'
-        carriers_file = output_prefix + "." + gene_info['SYMBOL'] + '.carriers_formated.tsv'
+        variant_file = output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.variant_table.tsv'
+        carriers_file = output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.carriers_formatted.tsv'
         geno_table.to_csv(path_or_buf=variant_file, index = False, sep="\t", na_rep='NA')
         carriers_table.to_csv(path_or_buf=carriers_file, index = False, sep="\t", na_rep='NA')
 
