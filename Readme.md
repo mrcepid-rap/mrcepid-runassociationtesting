@@ -751,23 +751,23 @@ on the basics of running GLM-based burden tests on the RAP.
 There are a standard set of command-line inputs that may be useful to change for the typical user. Note that the required
 inputs change depending on the selected `mode`. Please see the detailed section on [mode](#mode) below for more information.
 
-| input                   | description                                                                                                                                                                                             |
-|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| association_tarballs    | Hash ID(s) of the output from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants) that you wish to use for rare variant burden testing. See below for more information. |
-| tool                    | Tool to use for the burden testing module. **MUST** be one of 'bolt', 'saige', 'staar', 'glm', or 'regenie'. Case must also match.                                                                      |
-| mode                    | Mode to run this applet in. **MUST** be one of 'burden', 'extract', or 'phewas'. Case must match.                                                                                                       |
-| gene_ids                | A comma-separated list of genes (either SYMBOL or ENST) to use for phewas or extract mode.                                                                                                             |
-| phenofile               | Phenotypes file – see below for more information on the format of this file                                                                                                                             |
-| phenoname               | A single phenotype name to run association tests for. This allows for a user to provide a single phenotype file with multiple phenotypes and select one phenotype to run.                               |
-| run_marker_tests       | run SAIGE/BOLT per-marker tests? **[TRUE]**                                                                                                                                                             |
-| is_binary               | Is the given trait in the phenofile binary?                                                                                                                                                             |
-| sex                     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                                         |
-| inclusion_list          | List of samples (eids) to include in analysis **[None]**                                                                                                                                                |
-| exclusion_list          | List of samples (eids) to exclude in analysis **[None]**                                                                                                                                                |
-| output_prefix           | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                                                                |
-| covarfile               | File containing additional covariates to correct for when running association tests                                                                                                                     |
-| categorical_covariates  | comma-delimited list of categorical covariates found in covarfile to include in this model                                                                                                              |
-| quantitative_covariates | comma-delimited file of quantitative covariates found in covarfile to include in this model                                                                                                             |
+| input                   | description                                                                                                                                                                                                                                                                                                              |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| association_tarballs    | Hash ID(s) of the output from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants) that you wish to use for rare variant burden testing. See below for more information.                                                                                                                  |
+| tool                    | Tool to use for the burden testing module. **MUST** be one of 'bolt', 'saige', 'staar', 'glm', or 'regenie'. Case must also match.                                                                                                                                                                                       |
+| mode                    | Mode to run this applet in. **MUST** be one of 'burden', 'extract', or 'phewas'. Case must match.                                                                                                                                                                                                                        |
+| gene_ids                | A comma-separated list of genes (either SYMBOL or ENST) to use for phewas or extract mode.                                                                                                                                                                                                                               |
+| phenofile               | Phenotype file(s) – see below for more information on the format of these file(s). This can either be a single file or an array of file IDs when running PheWAS mode. See the [DNANexus Documentation](https://documentation.dnanexus.com/developer/api/running-analyses/io-and-run-specifications) for what this means. |
+| phenoname               | A single phenotype name to run association tests for. This allows for a user to provide a single phenotype file with multiple phenotypes and select one phenotype to run.                                                                                                                                                |
+| run_marker_tests        | run SAIGE/BOLT per-marker tests? **[TRUE]**                                                                                                                                                                                                                                                                              |
+| is_binary               | Is the given trait in the phenofile binary?                                                                                                                                                                                                                                                                              |
+| sex                     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                                                                                                                                                          |
+| inclusion_list          | List of samples (eids) to include in analysis **[None]**                                                                                                                                                                                                                                                                 |
+| exclusion_list          | List of samples (eids) to exclude in analysis **[None]**                                                                                                                                                                                                                                                                 |
+| output_prefix           | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                                                                                                                                                                                 |
+| covarfile               | File containing additional covariates to correct for when running association tests                                                                                                                                                                                                                                      |
+| categorical_covariates  | comma-delimited list of categorical covariates found in covarfile to include in this model                                                                                                                                                                                                                               |
+| quantitative_covariates | comma-delimited file of quantitative covariates found in covarfile to include in this model                                                                                                                                                                                                                              |
 
 There are also several command-line inputs that should not need to be changed if running from within application 9905. These
 mostly have to do with the underlying inputs to models that are generated by other tools in this pipeline. We have set
@@ -804,6 +804,8 @@ separate phenotype files and use the `is_binary` flag accordingly.
 `association_tarballs` takes either a single DNANexus file-ID that points to a single output from the 'mrcepid-collapsevariants' tool **OR** 
 a file with multiple such DNANexus file-IDs. This file is one file-ID per line, like:
 
+**NOTE:** The REVEL > 0.5 mask **DOES NOT WORK** with SAIGE-GENE. Do not use it. I do not know why!
+
 ```text
 file-G7z31B0J6F3ZbpGK6J0y2xxF
 file-G7z2zP8JQy2PjKjY97Zvb3z9
@@ -829,9 +831,12 @@ have any non-whitespace name (`pheno_name` below) that represents the phenotype 
 uses this name when performing variant testing and creating output. If providing a file with multiple phenotype columns, 
 users **MUST** choose that phenotype to test in `burden` mode using the `phenoname` input. `phenoname` must exactly match 
 the desired column. For `phewas` mode, `phenoname` is not required and **ALL* phenotypes in the provided file will be tested.
-Values for binary traits MUST be either 0/1/NA/NaN while
-values for continuous traits can be any float/int (e.g. 1.42 / 5) or NA/NaN. Individuals with NA/NaN values are 
-automatically excluded during testing.
+Values for binary traits MUST be either 0/1/NA/NaN while values for continuous traits can be any float/int (e.g. 1.42 / 5) 
+or NA/NaN. Individuals with NA/NaN values are automatically excluded during testing.
+
+When running in PheWAS mode, the user can also provide a .JSON compatible file-array of multiple phenotype files on which to
+perform PheWAS. Please see the [DNANexus Documentation](https://documentation.dnanexus.com/developer/api/running-analyses/io-and-run-specifications) 
+for how to do this in the UKBB RAP.
 
 ```text
 FID IID pheno_name

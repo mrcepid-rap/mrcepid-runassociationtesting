@@ -161,7 +161,7 @@ class SAIGERunner:
                 '--chrom=' + chromosome + ' ' \
                 '--annotation_in_groupTest=foo '
         if is_binary:
-            cmd = cmd + '--is_Firth_beta'
+            cmd = cmd + '--is_Firth_beta=TRUE'
 
         run_cmd(cmd, True, tarball_prefix + "." + chromosome + ".SAIGE_step2.log")
 
@@ -184,7 +184,7 @@ class SAIGERunner:
                     '--is_output_moreDetails=TRUE ' \
                     '--maxMissing=1 '
         if is_binary:
-            cmd = cmd + '--is_Firth_beta'
+            cmd = cmd + '--is_Firth_beta=TRUE'
         run_cmd(cmd, True, chromosome + ".SAIGE_markers.log")
 
     @staticmethod

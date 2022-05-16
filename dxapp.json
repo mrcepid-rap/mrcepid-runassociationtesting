@@ -44,12 +44,12 @@
     {
       "name": "phenofile",
       "label": "file with phenotype for association testing",
-      "class": "file",
+      "class": "array:file",
       "optional": false,
       "patterns": [
         "*.pheno"
       ],
-      "help": "Path/hash to phenotype file."
+      "help": "Path/hash to phenotype file(s)."
     },
     {
       "name": "phenoname",

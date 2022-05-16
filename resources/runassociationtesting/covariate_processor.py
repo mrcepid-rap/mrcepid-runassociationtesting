@@ -21,7 +21,7 @@ class CovariateProcessor:
 
         self._phenotypes = {}
         self._pheno_names = []
-        self._process_phenotype(phenoname)
+        self._process_phenotype(ingested_data.phenofiles, phenoname)
 
         # Process additional covariates (check if requested in the function):
         self._add_covars = {}
@@ -102,51 +102,59 @@ class CovariateProcessor:
         print("{0:65}: {val}".format("Total samples after inclusion/exclusion lists applied", val = len(self._genetics_samples)))
 
     # This is a helper function for 'create_covariate_file()' that processes the phenotype file
-    def _process_phenotype(self, phenoname: str) -> None:
-        # Need to go through phenofile first and injest into a dictionary and get the name of the phenofield:
-        dialect = csv.Sniffer().sniff(open('model_phenotypes.pheno', 'r').readline(), delimiters=[' ','\t'])
-        pheno_reader = csv.DictReader(open('model_phenotypes.pheno', 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
-        field_names = pheno_reader.fieldnames
-        # For PheWAS we want to ingest ALL pheno fields
-        if self._mode == 'phewas':
-            for field in field_names:
-                if field != "FID" and field != "IID":
-                    self._pheno_names.append(field)
-        # Otherwise do standard phenotype name processing
-        else:
-            if len(field_names) != 3:
-                if phenoname is None:
-                    raise RuntimeError("Pheno file has more than three columns (IID/FID/pheno) and phenoname is not set"
-                                       " – 'extract' and 'burden' modes are only compatible with a single phenotype!")
-                else:
-                    if phenoname in field_names:
-                        self._pheno_names.append(phenoname)
-                    else:
-                        raise RuntimeError("phenoname was not found in the provided phenofile!")
+    def _process_phenotype(self, phenofiles: list, phenoname: str) -> None:
+
+        # Reject a multi-pheno file situation if mode is anything other than "PheWAS"
+        if len(phenofiles) > 1 and self._mode != "phewas":
+            raise RuntimeError("Multiple phenofiles given but run mode is not set to phewas or extract!")
+
+        # Since we check for phewas mode above, this should only 'iterate' through multiple phenofiles if running in
+        # phewas mode...
+        # This for loop simply checks for phenotype names from the pheno file(s) and ingests into a list:
+        for phenofile in phenofiles:
+            dialect = csv.Sniffer().sniff(open(phenofile, 'r').readline(), delimiters=[' ','\t'])
+            pheno_reader = csv.DictReader(open(phenofile, 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
+            field_names = pheno_reader.fieldnames
+            # For PheWAS we want to ingest ALL pheno fields
+            if self._mode == 'phewas':
+                for field in field_names:
+                    if field != "FID" and field != "IID":
+                        self._pheno_names.append(field)
+            # Otherwise do standard phenotype name processing
             else:
-                if phenoname is None:
-                    for field in field_names:
-                        if field != "FID" and field != "IID":
-                            self._pheno_names.append(field)
-                else:
-                    if phenoname in field_names:
-                        self._pheno_names.append(phenoname)
+                if len(field_names) != 3:
+                    if phenoname is None:
+                        raise RuntimeError("Pheno file has more than three columns (IID/FID/pheno) and phenoname is not set"
+                                           " – 'extract' and 'burden' modes are only compatible with a single phenotype!")
                     else:
-                        raise RuntimeError("phenoname was not found in the provided phenofile!")
+                        if phenoname in field_names:
+                            self._pheno_names.append(phenoname)
+                        else:
+                            raise RuntimeError("phenoname was not found in the provided phenofile!")
+                else:
+                    if phenoname is None:
+                        for field in field_names:
+                            if field != "FID" and field != "IID":
+                                self._pheno_names.append(field)
+                    else:
+                        if phenoname in field_names:
+                            self._pheno_names.append(phenoname)
+                        else:
+                            raise RuntimeError("phenoname was not found in the provided phenofile!")
 
-        if "FID" not in field_names and "IID" not in field_names:
-            raise RuntimeError("Pheno file does not contain FID/IID fields!")
+            if "FID" not in field_names and "IID" not in field_names:
+                raise RuntimeError("Pheno file does not contain FID/IID fields!")
 
-        for indv in pheno_reader:
-            # Will spit out an error if a given sample does not have data
-            for pheno in self._pheno_names:
-                if pheno not in self._phenotypes:
-                    self._phenotypes[pheno] = {}
-                if indv[pheno] is None:
-                    raise dxpy.AppError("Phenotype file has blank lines!")
-                # Exclude individuals that have missing data (NA/NAN)
-                elif indv[pheno].lower() != "na" and indv[pheno].lower() != "nan" and indv[pheno].lower() != "":
-                    self._phenotypes[pheno][indv['FID']] = indv[pheno]
+            for indv in pheno_reader:
+                # Will spit out an error if a given sample does not have data
+                for pheno in self._pheno_names:
+                    if pheno not in self._phenotypes:
+                        self._phenotypes[pheno] = {}
+                    if indv[pheno] is None:
+                        raise dxpy.AppError("Phenotype file has blank lines!")
+                    # Exclude individuals that have missing data (NA/NAN)
+                    elif indv[pheno].lower() != "na" and indv[pheno].lower() != "nan" and indv[pheno].lower() != "":
+                        self._phenotypes[pheno][indv['FID']] = indv[pheno]
 
     # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
     def _process_additional_covariates(self, additional_covariates_found: bool, categorical_covariates: str, quantitative_covariates: str) -> tuple:

@@ -21,13 +21,15 @@ class IngestData:
         self.additional_covariates_found = False
         self.inclusion_found = False
         self.exclusion_found = False
+        self.phenofiles = []
         self.tarball_prefixes = []
         self.bgen_dict = {}
 
         self._ingest_docker_file()
         self._ingest_transcript_index(transcript_index)
         self._ingest_genetic_data(bed_file, fam_file, bim_file, low_MAC_list, sparse_grm, sparse_grm_sample)
-        self._ingest_covariates(base_covariates, phenofile, covarfile)
+        self._ingest_phenofile(phenofile)
+        self._ingest_covariates(base_covariates, covarfile)
         self._ingest_tarballs(association_tarballs)
         self._ingest_bgen(bgen_index)
         self._define_exclusion_lists(inclusion_list, exclusion_list)
@@ -58,10 +60,19 @@ class IngestData:
         dxpy.download_dxfile(dxpy.DXFile(sparse_grm_sample).get_id(),
                              'genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt')
 
+    def _ingest_phenofile(self, phenofile: list):
+
+          for pheno in phenofile:
+                curr_pheno = dxpy.DXFile(pheno)
+                curr_pheno_name = curr_pheno.describe()['name']
+
+                dxpy.download_dxfile(curr_pheno.get_id(), curr_pheno_name)
+                self.phenofiles.append(curr_pheno_name)
+
     # Get covariate/phenotype data:
-    def _ingest_covariates(self, base_covariates: dict, phenofile: dict, covarfile: dict):
+    def _ingest_covariates(self, base_covariates: dict, covarfile: dict):
         dxpy.download_dxfile(dxpy.DXFile(base_covariates).get_id(), 'base_covariates.covariates')
-        dxpy.download_dxfile(dxpy.DXFile(phenofile).get_id(), 'model_phenotypes.pheno')
+
         # Check if additional covariates were provided:
         if covarfile is not None:
             covarfile = dxpy.DXFile(covarfile)
