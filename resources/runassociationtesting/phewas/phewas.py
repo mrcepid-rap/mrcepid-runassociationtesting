@@ -43,8 +43,28 @@ class PheWAS:
             tarball_prefix, genotype_dict = result
             genotype_packs[tarball_prefix] = genotype_dict
 
-        # 3. Now build individual phenotype dictionaries:
-        # Successively iterate through each gene and run our model:
+        # 3. Add a variable for all gene/mask combinations to the pandas data frame.
+        # I think this is the most efficient way to do this on a large memory machine where I can store everything in
+        # one massive data frame. Everything else I have tried takes a very long time!
+
+        # First load the model dictionary
+        self._model_dictionary = pd.read_csv("phenotypes_covariates.formatted.txt",
+                                       sep=" ",
+                                       index_col="FID",
+                                       dtype={'IID': str})
+        self._model_dictionary.index = self._model_dictionary.index.astype(str)
+
+        # And then iterate through all possible combinations and add a column for mask+gene pairs
+        for model in genotype_packs:
+            for gene in gene_ENST_to_run:
+                indv_w_var = genotype_packs[model][gene]
+                var_name = '%s_%s' % (model, gene)
+                # Need to reserved characters for formula writing from the string name:
+                var_name = var_name.translate(
+                    str.maketrans({'-': '_', '+': '_', '(': '_', ')': '_', '~': '_', '*': '_'}))
+                self._model_dictionary[var_name] = np.where(self._model_dictionary.index.isin(indv_w_var), 1, 0)
+
+        # 4. Now run the actual models in parallel
         # I think this is straight-forward?
         print("Submitting linear models...")
         thread_utility = ThreadUtility(self._association_pack.threads,
@@ -52,22 +72,26 @@ class PheWAS:
                                        incrementor=10,
                                        thread_factor=2)
 
-        for pheno in self._association_pack.pheno_names:
-            covars = ['IID', pheno, 'sex', 'age', 'age_squared', 'wes_batch'] + ['PC' + str(PC) for PC in range(1,11)]
-            form_formated = pheno + ' ~ has_var + sex + age + age_squared + C(wes_batch) + PC1 + PC2 + PC3 + PC4 + PC5 + PC6 + PC7 + PC8 + PC9 + PC10'
-            if len(self._association_pack.found_quantitative_covariates) > 0:
-                for covar in self._association_pack.found_quantitative_covariates:
-                    form_formated += ' + ' + covar
-                    covars.append(covar)
-            if len(self._association_pack.found_categorical_covariates) > 0:
-                for covar in self._association_pack.found_categorical_covariates:
-                    form_formated += ' + C(' + covar + ')'
-                    covars.append(covar)
+        # First set the base covariates
+        covars = ['sex', 'age', 'age_squared', 'wes_batch'] + ['PC' + str(PC) for PC in range(1, 11)]
 
+        if len(self._association_pack.found_quantitative_covariates) > 0:
+            for covar in self._association_pack.found_quantitative_covariates:
+                covars.append(covar)
+        if len(self._association_pack.found_categorical_covariates) > 0:
+            for covar in self._association_pack.found_categorical_covariates:
+                covars.append('C(' + covar + ')')
+
+        for pheno in self._association_pack.pheno_names:
             for model in genotype_packs:
                 for gene in gene_ENST_to_run:
+                    var_name = '%s_%s' % (model, gene)
+                    # Need to reserved characters for formula writing from the string name:
+                    var_name = var_name.translate(
+                        str.maketrans({'-': '_', '+': '_', '(': '_', ')': '_', '~': '_', '*': '_'}))
+                    form_formated = pheno + ' ~ ' + ' + '.join(covars) + ' + ' + var_name
                     thread_utility.launch_job(self._linear_model_phewas,
-                                              indv_w_var=genotype_packs[model][gene],
+                                              id_column=var_name,
                                               formula=form_formated,
                                               phenoname=pheno,
                                               gene=gene,
@@ -77,7 +101,7 @@ class PheWAS:
         print("All GLM threads submitted")
         # Here we're collecting futures and writing the unformatted results at the same time
         fieldnames = ['ENST','maskname','pheno_name','p_val_init','n_car','n_model',
-                      'p_val_full','effect','std_err']
+                      'p_val_full','effect','std_err','model_run']
         if self._association_pack.is_binary:
             fieldnames.extend(['n_noncar_affected', 'n_noncar_unaffected', 'n_car_affected', 'n_car_unaffected'])
 
@@ -100,7 +124,7 @@ class PheWAS:
                       association_pack.output_prefix + '.SNP.glm.stats.tsv')
             self.outputs = [association_pack.output_prefix + '.SNP.glm.stats.tsv']
         else:
-            GLMRunner.process_linear_model_outputs(self._association_pack.output_prefix, genes_to_run)
+            GLMRunner.process_linear_model_outputs(self._association_pack.output_prefix, gene_ENST_to_run)
             self.outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
                             association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
 
@@ -108,65 +132,53 @@ class PheWAS:
         # individuals with NA phenotypes:
         # pheno_covars = pheno_covars[pheno_covars[phenotype].isna() == False]
 
-    @staticmethod
-    def _linear_model_phewas(indv_w_var: list, formula: str, phenoname: str, gene: str, mask_name: str, is_binary: bool) -> dict:
-
-        model_dictionary = pd.read_csv("phenotypes_covariates.formatted.txt",
-                                   sep=" ",
-                                   index_col="FID",
-                                   dtype={'IID': str})
-        model_dictionary.index = model_dictionary.index.astype(str)
-
-        # Remove phenotype NAs
-        model_dictionary = model_dictionary[model_dictionary[phenoname].isna() == False]
-
-        # Add a column for having a variable
-        model_dictionary['has_var'] = np.where(model_dictionary.index.isin(indv_w_var), 1, 0)
+    def _linear_model_phewas(self, id_column: str, formula: str, phenoname: str, gene: str, mask_name: str, is_binary: bool) -> dict:
 
         # Calculate Number of Carriers
-        n_car = len(model_dictionary.loc[model_dictionary['has_var'] == 1])
+        n_car = len(self._model_dictionary.loc[self._model_dictionary[id_column] == 1])
 
         # Default return:
         gene_dict = {'p_val_init': 'NA',
                      'n_car': n_car,
-                     'n_model': len(model_dictionary['IID']),
+                     'n_model': len(self._model_dictionary['IID']),
                      'ENST': gene,
                      'maskname': mask_name,
                      'pheno_name': phenoname,
                      'p_val_full': 'NA',
                      'effect': 'NA',
-                     'std_err': 'NA'}
+                     'std_err': 'NA',
+                     'model_run': 'false'}
         if is_binary:
-            gene_dict['n_noncar_affected'] = 'NA'
-            gene_dict['n_noncar_unaffected'] = 'NA'
-            gene_dict['n_car_affected'] = 'NA'
-            gene_dict['n_car_unaffected'] = 'NA'
+            gene_dict['n_noncar_affected'] = len(self._model_dictionary.query(
+                str.format('{has_var} == 0 & {phenoname} == 1', has_var=id_column, phenoname=phenoname)))
+            gene_dict['n_noncar_unaffected'] = len(self._model_dictionary.query(
+                str.format('{has_var} == 0 & {phenoname} == 0', has_var=id_column, phenoname=phenoname)))
+            gene_dict['n_car_affected'] = len(self._model_dictionary.query(
+                str.format('{has_var} == 1 & {phenoname} == 1', has_var=id_column, phenoname=phenoname)))
+            gene_dict['n_car_unaffected'] = len(self._model_dictionary.query(
+                str.format('{has_var} == 1 & {phenoname} == 0', has_var=id_column, phenoname=phenoname)))
 
-        if n_car <= 2:
+        if n_car <= 2 or (is_binary and (gene_dict['n_car_affected'] <= 2)):
             return gene_dict
         else:
             try:
                 sm_results = sm.GLM.from_formula(formula,
-                                                 data=model_dictionary,
-                                                 family=sm.families.Binomial() if is_binary else sm.families.Gaussian()).fit()
+                                                 data=self._model_dictionary,
+                                                 family=sm.families.Binomial() if is_binary else sm.families.Gaussian(),
+                                                 missing='drop').fit()
 
-                gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
-                             'n_car': n_car,
-                             'n_model': sm_results.nobs,
-                             'ENST': gene,
-                             'maskname': mask_name,
-                             'pheno_name': phenoname,
-                             'p_val_full': sm_results.pvalues['has_var'],
-                             'effect': sm_results.params['has_var'],
-                             'std_err': sm_results.bse['has_var']}
+                gene_dict['p_val_init'] = sm_results.pvalues[id_column]
+                gene_dict['n_car'] = n_car
+                gene_dict['n_model'] = sm_results.nobs
+                gene_dict['ENST'] = gene
+                gene_dict['maskname'] = mask_name
+                gene_dict['pheno_name'] = phenoname
+                gene_dict['p_val_full'] = sm_results.pvalues[id_column]
+                gene_dict['effect'] = sm_results.params[id_column]
+                gene_dict['std_err'] = sm_results.bse[id_column]
+                gene_dict['model_run'] = 'true'
 
                 # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
-                if is_binary:
-                    gene_dict['n_noncar_affected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=phenoname)))
-                    gene_dict['n_noncar_unaffected'] = len(model_dictionary.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=phenoname)))
-                    gene_dict['n_car_affected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 1', phenoname=phenoname)))
-                    gene_dict['n_car_unaffected'] = len(model_dictionary.query(str.format('has_var == 1 & {phenoname} == 0', phenoname=phenoname)))
-
                 return gene_dict
 
             except PerfectSeparationError:

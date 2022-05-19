@@ -140,14 +140,14 @@ class SAIGERunner:
     @staticmethod
     def _saige_step_two(tarball_prefix: str, chromosome: str, pheno_name: str, is_binary: bool) -> tuple:
 
-        cmd = "bcftools view --threads 1 -S /test/SAMPLES_Include.txt -Oz -o /test/" + tarball_prefix + "." + chromosome + ".saige_input.vcf.gz /test/" + tarball_prefix + "." + chromosome + ".SAIGE.bcf"
+        cmd = "bcftools view --threads 1 -S /test/SAMPLES_Include.txt -Ob -o /test/" + tarball_prefix + "." + chromosome + ".saige_input.bcf /test/" + tarball_prefix + "." + chromosome + ".SAIGE.bcf"
         run_cmd(cmd, True)
-        cmd = "bcftools index --threads 1 /test/" + tarball_prefix + "." + chromosome + ".saige_input.vcf.gz"
+        cmd = "bcftools index --threads 1 /test/" + tarball_prefix + "." + chromosome + ".saige_input.bcf"
         run_cmd(cmd, True)
         
         # See the README.md for more information on these parameters
         cmd = 'step2_SPAtests.R ' \
-                '--vcfFile=/test/' + tarball_prefix + '.' + chromosome + '.saige_input.vcf.gz ' \
+                '--vcfFile=/test/' + tarball_prefix + '.' + chromosome + '.saige_input.bcf ' \
                 '--vcfField=GT ' \
                 '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
                 '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
@@ -160,6 +160,7 @@ class SAIGERunner:
                 '--maxMissing=1 ' \
                 '--chrom=' + chromosome + ' ' \
                 '--annotation_in_groupTest=foo '
+
         if is_binary:
             cmd = cmd + '--is_Firth_beta=TRUE'
 

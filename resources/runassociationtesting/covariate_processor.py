@@ -115,11 +115,19 @@ class CovariateProcessor:
             dialect = csv.Sniffer().sniff(open(phenofile, 'r').readline(), delimiters=[' ','\t'])
             pheno_reader = csv.DictReader(open(phenofile, 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
             field_names = pheno_reader.fieldnames
+
+            # Check to make sure we have a proper identifier
+            if "FID" not in field_names and "IID" not in field_names:
+                raise RuntimeError("Pheno file does not contain FID/IID fields!")
+
+            # And ingest individual phenofields...
+            curr_pheno_names = []
+
             # For PheWAS we want to ingest ALL pheno fields
             if self._mode == 'phewas':
                 for field in field_names:
                     if field != "FID" and field != "IID":
-                        self._pheno_names.append(field)
+                        curr_pheno_names.append(field)
             # Otherwise do standard phenotype name processing
             else:
                 if len(field_names) != 3:
@@ -128,26 +136,23 @@ class CovariateProcessor:
                                            " – 'extract' and 'burden' modes are only compatible with a single phenotype!")
                     else:
                         if phenoname in field_names:
-                            self._pheno_names.append(phenoname)
+                            curr_pheno_names.append(phenoname)
                         else:
                             raise RuntimeError("phenoname was not found in the provided phenofile!")
                 else:
                     if phenoname is None:
                         for field in field_names:
                             if field != "FID" and field != "IID":
-                                self._pheno_names.append(field)
+                                curr_pheno_names.append(field)
                     else:
                         if phenoname in field_names:
-                            self._pheno_names.append(phenoname)
+                            curr_pheno_names.append(phenoname)
                         else:
                             raise RuntimeError("phenoname was not found in the provided phenofile!")
 
-            if "FID" not in field_names and "IID" not in field_names:
-                raise RuntimeError("Pheno file does not contain FID/IID fields!")
-
             for indv in pheno_reader:
                 # Will spit out an error if a given sample does not have data
-                for pheno in self._pheno_names:
+                for pheno in curr_pheno_names:
                     if pheno not in self._phenotypes:
                         self._phenotypes[pheno] = {}
                     if indv[pheno] is None:
@@ -155,6 +160,9 @@ class CovariateProcessor:
                     # Exclude individuals that have missing data (NA/NAN)
                     elif indv[pheno].lower() != "na" and indv[pheno].lower() != "nan" and indv[pheno].lower() != "":
                         self._phenotypes[pheno][indv['FID']] = indv[pheno]
+
+            # Finally add all phenonames added from this file to the final list of phenonames to run.
+            self._pheno_names.extend(curr_pheno_names)
 
     # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
     def _process_additional_covariates(self, additional_covariates_found: bool, categorical_covariates: str, quantitative_covariates: str) -> tuple:
