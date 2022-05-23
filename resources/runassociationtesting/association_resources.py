@@ -80,7 +80,6 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
     os.rename(chromosome + '.markers.sample', chromosome + '.old')
     with open(chromosome + '.old', 'r') as samp_file:
         fixed_samp_bolt = open(chromosome + '.markers.bolt.sample', 'w')
-        fixed_samp_saige = open(chromosome + '.markers.saige.sample', 'w')
         for line in samp_file:
             line = line.rstrip().split(" ")
             if line[0] == 'ID_1':
@@ -89,10 +88,8 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
                 fixed_samp_bolt.write('0 0 0 D\n')
             else:
                 fixed_samp_bolt.write("%s %s 0 NA\n" % (line[1], line[1]))
-                fixed_samp_saige.write("%s 0 NA\n" % (line[1]))
         samp_file.close()
         fixed_samp_bolt.close()
-        fixed_samp_saige.close()
 
     # And finally index the file
     cmd = "bgenix -index -g /test/" + chromosome + '.markers.bgen'

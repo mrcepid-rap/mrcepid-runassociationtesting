@@ -176,7 +176,7 @@ class SAIGERunner:
         cmd = 'step2_SPAtests.R ' \
                     '--bgenFile=/test/' + chromosome + '.markers.bgen ' \
                     '--bgenFileIndex=/test/' + chromosome + '.markers.bgen.bgi ' \
-                    '--sampleFile=/test/' + chromosome + '.markers.saige.sample ' \
+                    '--sampleFile=/test/' + chromosome + '.markers.bolt.sample ' \
                     '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
                     '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
                     '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \

@@ -177,53 +177,54 @@ class GLMRunner:
         geno_tables = []
         for chromosome in get_chromosomes(is_snp_tar):
             # This handles the genes that we need to test:
-            if exists(tarball_prefix + "." + chromosome + ".BOLT.bgen"):
+            if exists(tarball_prefix + "." + chromosome + ".STAAR.matrix.rds"):
                 # This handles the actual genetic data:
-                # load genetic data
-                # first convert into format we can use:
-                cmd = "plink2 --threads 2 --bgen /test/" + tarball_prefix + "." + chromosome + ".BOLT.bgen 'ref-last' " \
-                        "--sample /test/" + tarball_prefix + "." + chromosome + ".BOLT.sample " \
-                        "--export bcf --out /test/lm." + tarball_prefix + "." + chromosome + " " + \
-                        "--keep-fam /test/SAMPLES_Include.txt"
+                # This just makes a sparse matrix with columns: sample_id, gene name, genotype, ENST
+                # All information is derived from the sparse STAAR matrix files
+                cmd = "Rscript /prog/sparseMatrixProcessor.R " + \
+                        "/test/" + tarball_prefix + "." + chromosome + ".STAAR.matrix.rds " + \
+                        "/test/" + tarball_prefix + "." + chromosome + ".variants_table.STAAR.tsv " + \
+                        tarball_prefix + " " + \
+                        chromosome
                 run_cmd(cmd, True)
 
-                # This just makes a sparse matrix with columns: sample_id, gene name, genotype
-                cmd = "bcftools query -i \"GT='alt'\" -f \"[%SAMPLE\\t%ID\\t%GT\\n]\" " \
-                        "/test/lm." + tarball_prefix + "." + chromosome + ".bcf > " \
-                        "lm." + tarball_prefix + "." + chromosome + ".tsv"
-                run_cmd(cmd, True)
+                # And read in the resulting table
+                geno_table = pd.read_csv(tarball_prefix + "." + chromosome + ".lm_sparse_matrix.tsv",
+                                            sep="\t",
+                                            dtype={'FID': str})
 
-                geno_table = pd.read_csv("lm." + tarball_prefix + "." + chromosome + ".tsv",
-                                         sep = "\t",
-                                         names = ['eid', 'gene', 'gt'])
-                # bgen stores samples in eid_eid format, so get just the first eid
-                geno_table[['eid','eid2']] = geno_table['eid'].str.split('_', 1, expand=True)
-                geno_table = geno_table.drop('eid2', axis=1)
-
-                # Get all possible genes found and aggregate across gene IDs to get a list of individuals with a given gene
-                geno_table = geno_table.groupby('gene').agg({'eid': Series.to_list})
+                # What I understand here is that 'sum()' will only sum on numeric columns, so I don't have to worry
+                # about the varID column being drawn in
+                geno_table = geno_table.groupby(['ENST', 'FID']).sum()
                 geno_tables.append(geno_table)
 
         # And concatenate the final data_frame together:
-        genetic_data = pd.concat(geno_tables).to_dict()
-        genetic_data = genetic_data['eid'] # no idea why there is a top level 'eid' key
+        # The structure is a multi-indexed pandas DataFrame, where:
+        # Index 0 = ENST
+        # Index 1 = FID
+        genetic_data = pd.concat(geno_tables)
         print("Finished loading tarball prefix: " + tarball_prefix)
 
         return tarball_prefix, genetic_data
 
     # Run rare variant association testing using GLMs
     @staticmethod
-    def _linear_model_genes(linear_model_pack: LinearModelPack, genotype_table: dict, gene: str, mask_name: str, is_binary: bool, mode: str) -> dict:
+    def _linear_model_genes(linear_model_pack: LinearModelPack, genotype_table: pd.DataFrame, gene: str, mask_name: str, is_binary: bool, mode: str) -> dict:
 
         # Now successively iterate through each gene and run our model:
         # I think this is straight-forward?
-        indv_w_var = genotype_table[gene]
+        # This just extracts the pandas dataframe that is relevant to this particular gene:
+        indv_w_var = genotype_table.loc[gene]
 
         # We have to make an internal copy as this pandas.DataFrame is NOT threadsafe...
         # (psssttt... I still am unsure if it is...)
         internal_frame = pd.DataFrame.copy(linear_model_pack.null_model)
-        internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
-        n_car = len(internal_frame.loc[internal_frame['has_var'] == 1])
+
+        # And then we merge in the genotype information
+        internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
+        internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
+        internal_frame = internal_frame.drop(columns=['gt'])
+        n_car = len(internal_frame.loc[internal_frame['has_var'] >= 1])
 
         if n_car <= 2:
             gene_dict = {'p_val_init': 'NA',
@@ -246,7 +247,11 @@ class GLMRunner:
                                              family=sm.families.Gaussian()).fit()
 
             internal_frame = pd.DataFrame.copy(linear_model_pack.phenotypes)
-            internal_frame['has_var'] = np.where(internal_frame.index.isin(indv_w_var), 1, 0)
+
+            # And then we merge in the genotype information
+            internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
+            internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
+            internal_frame = internal_frame.drop(columns=['gt'])
 
             # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
             # OR if we are running a phewas, always calculate the full model
@@ -268,8 +273,8 @@ class GLMRunner:
                 if is_binary:
                     gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
                     gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
 
             else:
                 gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
@@ -285,8 +290,8 @@ class GLMRunner:
                 if is_binary:
                     gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
                     gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var == 1 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
+                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
 
         return gene_dict
 

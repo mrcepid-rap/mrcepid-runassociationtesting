@@ -75,7 +75,7 @@ if (length(sparse_kinship@x[sparse_kinship@x < 0.5]) == 0) {
     obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="gaussian")
   }
   obj_nullmodel$id_include = sparse_kinship@Dimnames[[1]] # This adds a variable to this S3 object make it easier to keep the same samples regardless of model type
-} else{
+} else {
   cat("Related samples found, using LMM to fit STAAR null")
   if (is_binary) {
     obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)

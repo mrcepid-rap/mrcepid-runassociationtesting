@@ -40,6 +40,7 @@ class ExtractVariants:
                 chromosomes.add(gene_info['chrom'])
 
         # 2. Load per-chromosome genotype/variant information
+        print("Loading VEP annotations...")
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=4)
         for chromosome in chromosomes:
             thread_utility.launch_job(self._download_vep,
@@ -48,6 +49,7 @@ class ExtractVariants:
         thread_utility.collect_futures()
 
         # 3. Filter relevant files to individuals we want to keep
+        print("Filtering variant files to appropriate individuals...")
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=4)
         for chromosome in set(['SNP']) if self._association_pack.is_snp_tar else chromosomes: # Just allows me to filter SNP vcfs if required...
             for tarball_prefix in association_pack.tarball_prefixes:
@@ -57,6 +59,7 @@ class ExtractVariants:
         thread_utility.collect_futures()
 
         # 4. Actually collect variant information per-gene
+        print("Extracting variant information...")
         genes_to_run = [] # This just enables easy parallelisation with GLMRunner() – we use this to run all genes at once rather than 1 by 1
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=2)
         for gene_info in gene_infos:
@@ -73,6 +76,7 @@ class ExtractVariants:
             self.outputs.extend(result)
 
         # 5. And run a linear model for all genes
+        print("Running linear models...")
         glm_run = GLMRunner(association_pack, genes_to_run=genes_to_run)
         self.outputs.extend(glm_run.outputs)
         os.rename('phenotypes_covariates.formatted.txt', association_pack.output_prefix + '.phenotypes_covariates.formatted.tsv')
