@@ -80,7 +80,12 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
-* v1.0.1 –
+* v1.1.1
+  * Modified how STAAR handles the GRM.
+    * There were issues with individuals that had pair-wise relatedness < 0.05. Individuals with relatedness < 0.05 are now thresholded to 0.05.
+    * This should not have a major effect as the min relatedness coefficient was 0.0442 
+
+* v1.1.0
   * Updated SAIGE to v1.0.4
     * Just adds support for default SAMPLE files
     * Also fixed minor issues with the SAIGE runtime
@@ -938,17 +943,27 @@ files.
 
 ### Command line example
 
-If this is your first time running this applet within a project other than "MRC - Variant Filtering", please see our
-organisational documentation on how to download and build this app on the DNANexus Research Access Platform:
+There are two ways to acquire this applet:
+
+1. As an **applet** – clone the repository from github and `dx build` an APPLET into your own workspace. If this is your first time doing 
+this within a project other than "MRC - Variant Filtering", please see our organisational documentation on how to download
+and build this app on the DNANexus Research Access Platform:
 
 https://github.com/mrcepid-rap
 
-This applet can be run in a few different ways:
+2. As an **app** – use the app that has been provided in the DNANexus global namespace. This will ensure you are always using
+the latest version and keeps you from having to manually update your local version. To be able to access this app, you
+will need to be an authorised member of `org-mrc_epid_group_1_2`. Please contact Eugene Gardner if you would like to
+be added!
+
+**Note:** All commands below have been provided as if using option (2) above!
+
+This app/applet can then be run in a few different ways:
 
 1. Run a BOLT burden test:
 
 ```commandline
-dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
+dx run app-mrcepid-runassociationtesting --priority low --destination results/ \ 
         -imode=burden
         -itool=bolt
         -iassociation_tarballs=file-G7zPvZ0JJv8v06j8Gv2ppxpJ \
@@ -967,7 +982,7 @@ keep for your model!
 2. Extract HC PTVs and samples for the gene BRCA2 from a single tarball:
 
 ```commandline
-dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
+dx run app-mrcepid-runassociationtesting --priority low --destination results/ \ 
         -imode=extract
         -igene_ids=BRCA2
         -iassociation_tarballs=file-G7yYqG0JKx5xg1qP8B6zq0z4 \
@@ -981,7 +996,7 @@ dx run mrcepid-runassociationtesting --priority low --destination results/ \
 3. Run a PheWAS on multiple cancer types for multiple masks for BRCA2:
 
 ```commandline
-dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
+dx run app-mrcepid-runassociationtesting --priority low --destination results/ \ 
         -imode=phewas
         -igene_ids=BRCA2
         -iassociation_tarballs=file-G7zPvZ0JJv8v06j8Gv2ppxpJ \
@@ -995,7 +1010,7 @@ dx run mrcepid-runassociationtesting --priority low --destination results/ \
 Brief I/O information can also be retrieved on the command line:
 
 ```commandline
-dx run mrcepid-runassociationtesting --help
+dx run app-mrcepid-runassociationtesting --help
 ```
 
 #### Selecting an Instance Type

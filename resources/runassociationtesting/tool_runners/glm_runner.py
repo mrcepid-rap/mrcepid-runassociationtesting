@@ -214,21 +214,89 @@ class GLMRunner:
         # Now successively iterate through each gene and run our model:
         # I think this is straight-forward?
         # This just extracts the pandas dataframe that is relevant to this particular gene:
-        indv_w_var = genotype_table.loc[gene]
+        # First if is to ensure that the gene is actually in the index.
+        if gene in genotype_table.index.levels[0]:
+            indv_w_var = genotype_table.loc[gene]
 
-        # We have to make an internal copy as this pandas.DataFrame is NOT threadsafe...
-        # (psssttt... I still am unsure if it is...)
-        internal_frame = pd.DataFrame.copy(linear_model_pack.null_model)
+            # We have to make an internal copy as this pandas.DataFrame is NOT threadsafe...
+            # (psssttt... I still am unsure if it is...)
+            internal_frame = pd.DataFrame.copy(linear_model_pack.null_model)
 
-        # And then we merge in the genotype information
-        internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
-        internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
-        internal_frame = internal_frame.drop(columns=['gt'])
-        n_car = len(internal_frame.loc[internal_frame['has_var'] >= 1])
+            # And then we merge in the genotype information
+            internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
+            internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
+            internal_frame = internal_frame.drop(columns=['gt'])
+            n_car = len(internal_frame.loc[internal_frame['has_var'] >= 1])
 
-        if n_car <= 2:
+            if n_car <= 2:
+                gene_dict = {'p_val_init': 'NA',
+                             'n_car': n_car,
+                             'n_model': linear_model_pack.n_model,
+                             'ENST': gene,
+                             'maskname': mask_name,
+                             'pheno_name': linear_model_pack.phenoname,
+                             'p_val_full': 'NA',
+                             'effect': 'NA',
+                             'std_err': 'NA'}
+                if is_binary:
+                    gene_dict['n_noncar_affected'] = 'NA'
+                    gene_dict['n_noncar_unaffected'] = 'NA'
+                    gene_dict['n_car_affected'] = 'NA'
+                    gene_dict['n_car_unaffected'] = 'NA'
+            else:
+                sm_results = sm.GLM.from_formula('resid ~ has_var',
+                                                 data=internal_frame,
+                                                 family=sm.families.Gaussian()).fit()
+
+                internal_frame = pd.DataFrame.copy(linear_model_pack.phenotypes)
+
+                # And then we merge in the genotype information
+                internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
+                internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
+                internal_frame = internal_frame.drop(columns=['gt'])
+
+                # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
+                # OR if we are running a phewas, always calculate the full model
+                if sm_results.pvalues['has_var'] < 1e-4 or mode == "extract":
+
+                    sm_results_full = sm.GLM.from_formula(linear_model_pack.model_formula,
+                                                          data=internal_frame,
+                                                          family=linear_model_pack.model_family).fit()
+                    gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
+                                 'n_car': n_car,
+                                 'n_model': sm_results.nobs,
+                                 'ENST': gene,
+                                 'maskname': mask_name,
+                                 'pheno_name': linear_model_pack.phenoname,
+                                 'p_val_full': sm_results_full.pvalues['has_var'],
+                                 'effect': sm_results_full.params['has_var'],
+                                 'std_err': sm_results_full.bse['has_var']}
+                    # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
+                    if is_binary:
+                        gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
+
+                else:
+                    gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
+                                 'n_car': n_car,
+                                 'n_model': sm_results.nobs,
+                                 'ENST': gene,
+                                 'maskname': mask_name,
+                                 'pheno_name': linear_model_pack.phenoname,
+                                 'p_val_full': 'NA',
+                                 'effect': 'NA',
+                                 'std_err': 'NA'}
+                    # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
+                    if is_binary:
+                        gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
+                        gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
+        else:
             gene_dict = {'p_val_init': 'NA',
-                         'n_car': n_car,
+                         'n_car': 0,
                          'n_model': linear_model_pack.n_model,
                          'ENST': gene,
                          'maskname': mask_name,
@@ -241,57 +309,6 @@ class GLMRunner:
                 gene_dict['n_noncar_unaffected'] = 'NA'
                 gene_dict['n_car_affected'] = 'NA'
                 gene_dict['n_car_unaffected'] = 'NA'
-        else:
-            sm_results = sm.GLM.from_formula('resid ~ has_var',
-                                             data=internal_frame,
-                                             family=sm.families.Gaussian()).fit()
-
-            internal_frame = pd.DataFrame.copy(linear_model_pack.phenotypes)
-
-            # And then we merge in the genotype information
-            internal_frame = pd.merge(internal_frame, indv_w_var, how='left', on='FID')
-            internal_frame['has_var'] = internal_frame['gt'].transform(lambda x: 0 if np.isnan(x) else x)
-            internal_frame = internal_frame.drop(columns=['gt'])
-
-            # If we get a significant result here, re-test with the full model to get accurate beta/p. value/std. err.
-            # OR if we are running a phewas, always calculate the full model
-            if sm_results.pvalues['has_var'] < 1e-4 or mode == "extract":
-
-                sm_results_full = sm.GLM.from_formula(linear_model_pack.model_formula,
-                                                      data=internal_frame,
-                                                      family=linear_model_pack.model_family).fit()
-                gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
-                             'n_car': n_car,
-                             'n_model': sm_results.nobs,
-                             'ENST': gene,
-                             'maskname': mask_name,
-                             'pheno_name': linear_model_pack.phenoname,
-                             'p_val_full': sm_results_full.pvalues['has_var'],
-                             'effect': sm_results_full.params['has_var'],
-                             'std_err': sm_results_full.bse['has_var']}
-                # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
-                if is_binary:
-                    gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 1', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname} == 0', phenoname=linear_model_pack.phenoname)))
-
-            else:
-                gene_dict = {'p_val_init': sm_results.pvalues['has_var'],
-                             'n_car': n_car,
-                             'n_model': sm_results.nobs,
-                             'ENST': gene,
-                             'maskname': mask_name,
-                             'pheno_name': linear_model_pack.phenoname,
-                             'p_val_full': 'NA',
-                             'effect': 'NA',
-                             'std_err': 'NA'}
-                # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
-                if is_binary:
-                    gene_dict['n_noncar_affected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_noncar_unaffected'] = len(internal_frame.query(str.format('has_var == 0 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_affected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="1"', phenoname=linear_model_pack.phenoname)))
-                    gene_dict['n_car_unaffected'] = len(internal_frame.query(str.format('has_var >= 1 & {phenoname}=="0"', phenoname=linear_model_pack.phenoname)))
 
         return gene_dict
 

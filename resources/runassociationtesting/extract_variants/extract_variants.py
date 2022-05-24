@@ -1,4 +1,5 @@
 import csv
+import warnings
 
 import pandas as pd
 import pandas.core.series
@@ -41,7 +42,7 @@ class ExtractVariants:
 
         # 2. Load per-chromosome genotype/variant information
         print("Loading VEP annotations...")
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=4)
+        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=5,thread_factor=4)
         for chromosome in chromosomes:
             thread_utility.launch_job(self._download_vep,
                                       chromosome = chromosome,
@@ -50,7 +51,7 @@ class ExtractVariants:
 
         # 3. Filter relevant files to individuals we want to keep
         print("Filtering variant files to appropriate individuals...")
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=4)
+        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=4)
         for chromosome in set(['SNP']) if self._association_pack.is_snp_tar else chromosomes: # Just allows me to filter SNP vcfs if required...
             for tarball_prefix in association_pack.tarball_prefixes:
                 thread_utility.launch_job(self._filter_individuals,
@@ -61,7 +62,7 @@ class ExtractVariants:
         # 4. Actually collect variant information per-gene
         print("Extracting variant information...")
         genes_to_run = [] # This just enables easy parallelisation with GLMRunner() – we use this to run all genes at once rather than 1 by 1
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=1,thread_factor=2)
+        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=2)
         for gene_info in gene_infos:
             genes_to_run.append(gene_info.name)
             for tarball_prefix in association_pack.tarball_prefixes:
@@ -96,15 +97,20 @@ class ExtractVariants:
     @staticmethod
     def _annotate_variants(tarball_prefix: str, gene_info: pandas.core.series.Series, output_prefix: str, chromosomes: set) -> list:
 
+        # The point here is that if we have a SNP tar, we may need to load in variant annotations for multiple chromosomes
+        # If just a single gene (chromosomes = None), only need to load the data for the chromosome that gene is on
         if chromosomes is None:
             chromosome = gene_info['chrom']
-            variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t")
         else:
             variant_index = []
-            for chrom in chromosomes:
-                variant_index.append(pd.read_csv(gzip.open(chrom + ".filtered.vep.tsv.gz", 'rt'), sep = "\t"))
+            for chromosome in chromosomes:
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep="\t")
             variant_index = pd.concat(variant_index)
-            chromosome = 'SNP'
 
         # Need to get the variants from the SAIGE groupfile:
         with open(tarball_prefix + "." + chromosome + ".SAIGE.groupFile.txt") as saige_group_file:

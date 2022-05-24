@@ -30,8 +30,9 @@ from runassociationtesting.phewas.phewas import PheWAS
 
 @dxpy.entry_point('main')
 def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
-         exclusion_list, inclusion_list, phenofile, phenoname, covarfile, categorical_covariates, quantitative_covariates, output_prefix, run_marker_tests,
-         bgen_index, transcript_index, base_covariates, bed_file, fam_file, bim_file, low_MAC_list, sparse_grm, sparse_grm_sample):
+         exclusion_list, inclusion_list, phenofile, phenoname, covarfile, categorical_covariates, quantitative_covariates,
+         output_prefix, run_marker_tests, bgen_index, transcript_index, base_covariates, bed_file, fam_file, bim_file,
+         low_MAC_list, sparse_grm, sparse_grm_sample):
 
     # Check required options fit before running anything:
     if mode == 'burden':
