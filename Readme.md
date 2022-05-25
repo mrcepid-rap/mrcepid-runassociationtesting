@@ -83,6 +83,7 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 * v1.1.1
   * Modified how STAAR handles the GRM.
     * There were issues with individuals that had pair-wise relatedness < 0.05. Individuals with relatedness < 0.05 are now thresholded to 0.05.
+    * Refer to [this issue](https://github.com/xihaoli/STAAR/issues/11) on GitHub for our discussions with the authors of STAAR.
     * This should not have a major effect as the min relatedness coefficient was 0.0442 
 
 * v1.1.0

@@ -58,7 +58,7 @@ data_for_STAAR[,FID:=as.character(FID)]
 sparse_kinship <- sparse_kinship[data_for_STAAR[,FID],data_for_STAAR[,FID]] # Pares down the GRM to the same individuals in the covariate / pheno data frame
 
 # This is a very strange bit - STAAR won't run if the minimum value is < 0.05, so I threshold individuals to fix this:
-sparse_kinship@x <- sapply(sparse_kinship@x, function(x) if_else(x < 0.05, 0.05, x))
+sparse_kinship@x <- sapply(sparse_kinship@x, function(x) ifelse(x < 0.05, 0.05, x))
 
 # Fit the null model for STAAR:
 # These lines just autoformat our formula for association testing
