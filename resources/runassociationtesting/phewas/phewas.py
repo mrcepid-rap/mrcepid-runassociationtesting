@@ -93,17 +93,14 @@ class PheWAS:
 
         # 5. Run a STAAR model for each phenotype:
         print("Running STAAR models...")
-        self.outputs.extend(STAARRunner(self._association_pack, gene_infos=gene_infos))
+        STAARRunner(self._association_pack, gene_infos=gene_infos)
 
         # 6. Annotate unformatted results and print final outputs
         print("Annotating Linear Model results")
-        self.outputs.extend(process_linear_model_outputs(self._association_pack, gene_infos))
+        process_linear_model_outputs(self._association_pack, gene_infos)
 
         # 7. Merging GLM/STAAR runs:
-        try:
-            self.outputs.extend(merge_glm_staar_runs(self._association_pack))  # Function merges STAAR and GLM results together
-        except Exception:
-            print("merging STAAR/GLM runs didn't work!")
+        self.outputs.extend(merge_glm_staar_runs(self._association_pack))  # Function merges STAAR and GLM results together
 
     # I think this is the most efficient way to do this on a large memory machine where I can store everything in
     # one massive DataFrame. Everything else I have tried takes a very long time!
