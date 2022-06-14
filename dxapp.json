@@ -3,7 +3,7 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "openSource": true,
   "inputSpec": [
     {
@@ -138,7 +138,7 @@
       "class": "boolean",
       "optional": true,
       "default": true,
-      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY reduce run-time (particularly if -itool=saige)."
+      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY reduce run-time (particularly if -itool=saige). Only changes output for burden tests where tool = saige,regenie, or bolt."
     },
     {
       "name": "bgen_index",
@@ -188,7 +188,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G47V8J2k6xBBJxGjFFQ5Xj"
+          "id": "file-GBVYX88J57yK9fjf5qZ0kK61"
         }
       }
     },
@@ -201,7 +201,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G48k0J2k6Z7Q7BFqfb05G3"
+          "id": "file-GBVYYK0J57y8f2qZ2yfz09f5"
         }
       }
     },
@@ -214,7 +214,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G48kjJ2k6YyZyjGgqz9PFG"
+          "id": "file-GBVYYKQJ57yF1zKk15bZ3Yjb"
         }
       }
     },
@@ -227,7 +227,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G48x0J2k6fZ3Yf97GPXbXF"
+          "id": "file-GBVYYVjJ57y17ZyY2y65gFFk"
         }
       }
     },
@@ -240,7 +240,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G48v0J2k6x3XjxGfK0XJ65"
+          "id": "file-GBVYYQjJ57yJ203GKx5KYxJ6"
         }
       }
     },
@@ -253,7 +253,7 @@
       "default": {
         "$dnanexus_link": {
           "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G9G48vQJ2k6kXq4706BXf4XB"
+          "id": "file-GBVYYV8J57yGZ20kKyFjqQ6P"
         }
       }
     }

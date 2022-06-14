@@ -25,6 +25,9 @@ data_for_STAAR <- fread(covariates_file)
 # Set covariates
 data.cols <- c("FID", "age", "age_squared", "wes_batch", "sex", paste0("PC", seq(1,10)), pheno_name)
 
+# Need to exclude NA individuals when running PheWAS data.
+data_for_STAAR <- data_for_STAAR[!is.na(get(pheno_name))]
+
 # Determine if there are additional covariates we need to consider:
 if (quant_covars != "NULL") {
   quant_covars <- strsplit(quant_covars,",")[[1]]
@@ -69,21 +72,64 @@ if (length(unique(data_for_STAAR[,sex])) == 1) {
 }
 cov.string <- paste(covariates, collapse=" + ")
 formated.formula <- as.formula(paste(pheno_name, cov.string,sep=" ~ "))
+
 # And run either a linear or logistic model according to is_binary, with the NULL set based on relatedness of samples
 if (length(sparse_kinship@x[sparse_kinship@x < 0.5]) == 0) {
   cat("No related samples found, using GLM to fit STAAR null")
   if (is_binary) {
-    obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+    if (nrow(data_for_STAAR[get(pheno_name) == 1]) == 0) { # For PheWAS mode need to check if we have any cases. If not, build a 'fake' null model so we can signal to step 2...
+      obj_nullmodel <- list('zero_cases' = TRUE)  
+    } else {
+      obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+    }
   } else {
     obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="gaussian")
   }
   obj_nullmodel$id_include = sparse_kinship@Dimnames[[1]] # This adds a variable to this S3 object make it easier to keep the same samples regardless of model type
+  obj_nullmodel$corrected_for_relateds = FALSE
 } else {
   cat("Related samples found, using LMM to fit STAAR null")
   if (is_binary) {
-    obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
+    obj_nullmodel <- tryCatch(
+      {
+        if (nrow(data_for_STAAR[get(pheno_name) == 1]) == 0) { # For PheWAS mode need to check if we have any cases. If not, build a 'fake' null model so we can signal to step 2...
+          obj_nullmodel <- list('zero_cases' = TRUE,
+                                'corrected_for_relateds' = FALSE,
+                                'id_include' = sparse_kinship@Dimnames[[1]])
+          obj_nullmodel
+        } else {
+          obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=binomial(link="logit"), kins = sparse_kinship)
+          obj_nullmodel$corrected_for_relateds = TRUE
+          obj_nullmodel$zero_cases = FALSE
+          obj_nullmodel
+        }
+        },
+      error=function(cond) {
+        cat(paste0("STAAR model failed for phenotype ", pheno_name, ". Trying model uncorrected for relatedness..."))
+        obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="binomial")
+        obj_nullmodel$id_include = sparse_kinship@Dimnames[[1]] # This adds a variable to this S3 object make it easier to keep the same samples regardless of model type
+        obj_nullmodel$corrected_for_relateds = FALSE
+        obj_nullmodel$zero_cases = FALSE
+        obj_nullmodel
+        }
+      )
   } else {
-    obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=gaussian(link="identity"), kins = sparse_kinship)
+    obj_nullmodel <- tryCatch(
+      {
+        obj_nullmodel <- fit_null_glmmkin(formated.formula, data=data_for_STAAR, id="FID", family=gaussian(link="identity"), kins = sparse_kinship)
+        obj_nullmodel$corrected_for_relateds = TRUE
+        obj_nullmodel$zero_cases = FALSE
+        obj_nullmodel
+      },
+      error=function(cond) {
+        cat(paste0("STAAR model failed for phenotype ", pheno_name, ". Trying model uncorrected for relatedness..."))
+        obj_nullmodel <- fit_null_glm(formated.formula, data=data_for_STAAR, family="gaussian")
+        obj_nullmodel$id_include = sparse_kinship@Dimnames[[1]] # This adds a variable to this S3 object make it easier to keep the same samples regardless of model type
+        obj_nullmodel$corrected_for_relateds = FALSE
+        obj_nullmodel$zero_cases = FALSE
+        obj_nullmodel
+        }
+    )
   }
 }
 

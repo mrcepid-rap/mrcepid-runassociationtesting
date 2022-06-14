@@ -10,31 +10,36 @@ class CovariateProcessor:
     def __init__(self, ingested_data: IngestData, phenoname: str, categorical_covariates: str, quantitative_covariates: str,
                  gene_ids: str, sex: int, is_binary: bool, run_marker_tests: bool, output_prefix: str, mode: str):
 
+        # De-identify specific variables
+        self._ingested_data = ingested_data
         self._sex = sex
         self._mode = mode
+
         self._get_num_threads()
         self._set_gene_ids(gene_ids)
 
+        # Set samples to use
         self._genetics_samples = set()
-        self._select_individuals(ingested_data.inclusion_found,
-                                 ingested_data.exclusion_found)
+        self._select_individuals()
 
+        # Define phenotype information
         self._phenotypes = {}
         self._pheno_names = []
-        self._process_phenotype(ingested_data.phenofiles, phenoname)
+        self._process_phenotype(phenoname)
 
-        # Process additional covariates (check if requested in the function):
+        # Process additional covariates (check if requested in the function)
         self._add_covars = {}
         self._found_quantitative_covariates = []
         self._found_categorical_covariates = []
-        self._process_additional_covariates(ingested_data.additional_covariates_found,
-                                            categorical_covariates,
+        self._process_additional_covariates(categorical_covariates,
                                             quantitative_covariates)
 
-        self._create_covariate_file(ingested_data.additional_covariates_found)
+        # Create the joint pheno/covariate file for testing
+        self._create_covariate_file()
 
-        self.association_pack = AssociationPack(tarball_prefixes=ingested_data.tarball_prefixes,
-                                                bgen_dict=ingested_data.bgen_dict,
+        # Define a class of resources/variables for testing to pull from
+        self.association_pack = AssociationPack(tarball_prefixes=self._ingested_data.tarball_prefixes,
+                                                bgen_dict=self._ingested_data.bgen_dict,
                                                 is_binary=is_binary,
                                                 sex=sex,
                                                 threads=self._threads,
@@ -42,7 +47,8 @@ class CovariateProcessor:
                                                 output_prefix=output_prefix,
                                                 pheno_names=self._pheno_names,
                                                 mode=self._mode,
-                                                is_snp_tar=ingested_data.is_snp_tar,
+                                                is_snp_tar=self._ingested_data.is_snp_tar,
+                                                is_gene_tar=self._ingested_data.is_gene_tar,
                                                 found_quantitative_covariates=self._found_quantitative_covariates,
                                                 found_categorical_covariates=self._found_categorical_covariates,
                                                 gene_ids=self._gene_ids)
@@ -62,11 +68,11 @@ class CovariateProcessor:
     # 1. Get individuals we plan to include
     # 2. Exclude individuals not wanted in the analysis
     # 3. Get individuals that are POSSIBLE to include (they actually have WES) and only keep 'include' samples
-    def _select_individuals(self, inclusion_found: bool, exclusion_found: bool) -> set:
+    def _select_individuals(self) -> set:
 
         # Get a list of individuals that we ARE going to use
         include_samples = set()
-        if inclusion_found is True:
+        if self._ingested_data.inclusion_found is True:
             inclusion_file = open('INCLUSION.lst', 'r')
             for indv in inclusion_file:
                 indv = indv.rstrip()
@@ -74,7 +80,7 @@ class CovariateProcessor:
 
         # Get a list of individuals that we ARE NOT going to use
         exclude_samples = set()
-        if exclusion_found is True:
+        if self._ingested_data.exclusion_found is True:
             exclude_file = open('EXCLUSION.lst', 'r')
             for indv in exclude_file:
                 indv = indv.rstrip()
@@ -87,12 +93,12 @@ class CovariateProcessor:
             line = line.rstrip()
             fields = line.split()
             eid = fields[0]
-            if inclusion_found == False and exclusion_found == False:
+            if self._ingested_data.inclusion_found == False and self._ingested_data.exclusion_found == False:
                 self._genetics_samples.add(eid)
-            elif inclusion_found == False and exclusion_found == True:
+            elif self._ingested_data.inclusion_found == False and self._ingested_data.exclusion_found == True:
                 if eid not in exclude_samples:
                     self._genetics_samples.add(eid)
-            elif inclusion_found == True and exclusion_found == False:
+            elif self._ingested_data.inclusion_found == True and self._ingested_data.exclusion_found == False:
                 if eid in include_samples:
                     self._genetics_samples.add(eid)
             else:
@@ -102,16 +108,16 @@ class CovariateProcessor:
         print("{0:65}: {val}".format("Total samples after inclusion/exclusion lists applied", val = len(self._genetics_samples)))
 
     # This is a helper function for 'create_covariate_file()' that processes the phenotype file
-    def _process_phenotype(self, phenofiles: list, phenoname: str) -> None:
+    def _process_phenotype(self, phenoname: str) -> None:
 
         # Reject a multi-pheno file situation if mode is anything other than "PheWAS"
-        if len(phenofiles) > 1 and self._mode != "phewas":
-            raise RuntimeError("Multiple phenofiles given but run mode is not set to phewas or extract!")
+        if len(self._ingested_data.phenofiles) > 1 and self._mode != "phewas":
+            raise RuntimeError("Multiple phenofiles given but run mode is not set to phewas!")
 
         # Since we check for phewas mode above, this should only 'iterate' through multiple phenofiles if running in
         # phewas mode...
         # This for loop simply checks for phenotype names from the pheno file(s) and ingests into a list:
-        for phenofile in phenofiles:
+        for phenofile in self._ingested_data.phenofiles:
             dialect = csv.Sniffer().sniff(open(phenofile, 'r').readline(), delimiters=[' ','\t'])
             pheno_reader = csv.DictReader(open(phenofile, 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
             field_names = pheno_reader.fieldnames
@@ -130,6 +136,7 @@ class CovariateProcessor:
                         curr_pheno_names.append(field)
             # Otherwise do standard phenotype name processing
             else:
+                # Only allow for three field names (FID/IID/pheno) when phenoname is not provided
                 if len(field_names) != 3:
                     if phenoname is None:
                         raise RuntimeError("Pheno file has more than three columns (IID/FID/pheno) and phenoname is not set"
@@ -140,6 +147,7 @@ class CovariateProcessor:
                         else:
                             raise RuntimeError("phenoname was not found in the provided phenofile!")
                 else:
+                    # Still make sure the phenoname is correct if user provided one
                     if phenoname is None:
                         for field in field_names:
                             if field != "FID" and field != "IID":
@@ -150,6 +158,7 @@ class CovariateProcessor:
                         else:
                             raise RuntimeError("phenoname was not found in the provided phenofile!")
 
+            # And then iterate through every sample in the phenofile and add the information to our self._phenotypes dictionary
             for indv in pheno_reader:
                 # Will spit out an error if a given sample does not have data
                 for pheno in curr_pheno_names:
@@ -165,9 +174,9 @@ class CovariateProcessor:
             self._pheno_names.extend(curr_pheno_names)
 
     # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
-    def _process_additional_covariates(self, additional_covariates_found: bool, categorical_covariates: str, quantitative_covariates: str) -> tuple:
+    def _process_additional_covariates(self,categorical_covariates: str, quantitative_covariates: str) -> tuple:
 
-        if additional_covariates_found:
+        if self._ingested_data.additional_covariates_found:
             dialect = csv.Sniffer().sniff(open('additional_covariates.covariates', 'r').readline(), delimiters=[' ','\t'])
             additional_covar_reader = csv.DictReader(open('additional_covariates.covariates', 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
             field_names = list.copy(additional_covar_reader.fieldnames)
@@ -214,7 +223,7 @@ class CovariateProcessor:
                     self._add_covars[sample['IID']] = sample_dict
 
     # Do covariate processing and sample inclusion/exclusion
-    def _create_covariate_file(self, additional_covariates_found: bool) -> dict:
+    def _create_covariate_file(self) -> dict:
 
         # Read the base covariates into this code that we want to analyse:
         # Formatting is weird to fit with other printing below...
@@ -225,7 +234,7 @@ class CovariateProcessor:
             print("{pad:^5}{:60}: {val}".format("Categorical", val = 'sex, WES_batch',pad=' '))
         else:
             print("{pad:^5}{:60}: {val}".format("Categorical", val = 'WES_batch',pad=' '))
-        if additional_covariates_found:
+        if self._ingested_data.additional_covariates_found:
             print("{0:65}: {val}".format("Number of individuals with non-null additional covariates", val = len(self._add_covars)))
             print("{0:65}: {val}".format("Additional covariates included in model", val = ''))
             if len(self._found_quantitative_covariates) > 0:
@@ -241,7 +250,7 @@ class CovariateProcessor:
 
         base_covar_reader = csv.DictReader(open('base_covariates.covariates', 'r'), delimiter="\t")
         indv_written = 0 # Just to count the number of samples we will analyse
-        formatted_combo_file = open('phenotypes_covariates.formatted.txt', 'w') # SAIGE needs a combo file
+        formatted_combo_file = open('phenotypes_covariates.formatted.txt', 'w', newline='\n') # SAIGE needs a combo file
 
         write_fields = ["FID", "IID"]
         write_fields = write_fields + ["PC%s" % (x) for x in range(1,41)]
@@ -255,10 +264,13 @@ class CovariateProcessor:
                                       fieldnames = write_fields,
                                       quoting = csv.QUOTE_NONE,
                                       delimiter = " ",
-                                      extrasaction='ignore')
+                                      extrasaction='ignore',
+                                      lineterminator='\n')
         combo_writer.writeheader()
 
         # Need a list of included individuals ONLY:
+        # We write both a file for every other tool and a file for regenie at the same time just in case
+        # the user requests a REGENIE run
         include_samples = open('SAMPLES_Include.txt', 'w')
         num_all_samples = 0
         na_pheno_samples = 0 # for checking number of individuals missing phenotype information

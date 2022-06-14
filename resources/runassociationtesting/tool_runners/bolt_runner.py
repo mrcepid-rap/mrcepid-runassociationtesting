@@ -14,27 +14,28 @@ class BOLTRunner:
     def __init__(self, association_pack: AssociationPack):
 
         self._association_pack = association_pack
+
         # Need to pare down the bgen file to samples being tested
         # Have to do this for all chromosomes and all included tarballs, so going to parallelise:
 
         # 1. First we need to download / prep the BGEN files we want to run through BOLT
         print("Processing BGEN files for BOLT run...")
-        thread_utility = ThreadUtility(association_pack.threads,error_message='A BOLT thread failed',incrementor=10,thread_factor=4)
+        thread_utility = ThreadUtility(self._association_pack.threads,error_message='A BOLT thread failed',incrementor=10,thread_factor=4)
         with open('poss_chromosomes.txt', 'w') as poss_chromosomes:
             for chromosome in get_chromosomes():
-                for tarball_prefix in association_pack.tarball_prefixes:
+                for tarball_prefix in self._association_pack.tarball_prefixes:
                     if exists(tarball_prefix + "." + chromosome + ".BOLT.bgen"):
                         poss_chromosomes.write("/test/%s /test/%s\n" % (tarball_prefix + "." + chromosome + ".bgen", tarball_prefix + "." + chromosome + ".sample"))
                         thread_utility.launch_job(class_type=self._process_bolt_file,
                                                   tarball_prefix=tarball_prefix,
                                                   chromosome=chromosome)
 
-                if association_pack.run_marker_tests:
+                if self._association_pack.run_marker_tests:
                     poss_chromosomes.write("/test/%s /test/%s\n" % (chromosome + ".markers.bgen", chromosome + ".markers.bolt.sample"))
                     # This makes use of a utility class from AssociationResources since bgen filtering/processing is
                     # IDENTICAL to that done for SAIGE. Do not want to duplicate code!
                     thread_utility.launch_job(class_type=process_bgen_file,
-                                              chrom_bgen_index = association_pack.bgen_dict[chromosome], # This holds the information for downloading the bgen file
+                                              chrom_bgen_index = self._association_pack.bgen_dict[chromosome], # This holds the information for downloading the bgen file
                                               chromosome = chromosome)
 
             poss_chromosomes.close()
@@ -46,16 +47,7 @@ class BOLTRunner:
 
         #3. Process the outputs
         print("Processing BOLT outputs...")
-        self._process_bolt_outputs()
-
-        #4. Collate outputs
-        self.outputs = [association_pack.output_prefix + '.stats.gz',
-                             association_pack.output_prefix + '.genes.BOLT.stats.tsv.gz',
-                             association_pack.output_prefix + '.genes.BOLT.stats.tsv.gz.tbi',
-                             association_pack.output_prefix + '.BOLT.log']
-        if association_pack.run_marker_tests:
-            self.outputs.append(association_pack.output_prefix + '.markers.BOLT.stats.tsv.gz')
-            self.outputs.append(association_pack.output_prefix + '.markers.BOLT.stats.tsv.gz.tbi')
+        self.outputs = self._process_bolt_outputs()
 
     # This handles processing of mask and whole-exome bgen files for input into BOLT
     @staticmethod
@@ -115,7 +107,7 @@ class BOLTRunner:
         run_cmd(cmd, True, self._association_pack.output_prefix + ".BOLT.log")
 
     # This parses the BOLT output file into a useable format for plotting/R
-    def _process_bolt_outputs(self) -> None:
+    def _process_bolt_outputs(self) -> list:
 
         # First read in the BOLT stats file:
         bolt_table = pd.read_csv(gzip.open(self._association_pack.output_prefix + '.bgen.stats.gz', 'rt'), sep = "\t")
@@ -179,6 +171,11 @@ class BOLTRunner:
             cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + self._association_pack.output_prefix + '.genes.BOLT.stats.tsv.gz'
             run_cmd(cmd, True)
 
+        outputs = [self._association_pack.output_prefix + '.stats.gz',
+                   self._association_pack.output_prefix + '.genes.BOLT.stats.tsv.gz',
+                   self._association_pack.output_prefix + '.genes.BOLT.stats.tsv.gz.tbi',
+                   self._association_pack.output_prefix + '.BOLT.log']
+
         # And now process the SNP file (if necessary):
         # Read in the variant index (per-chromosome and mash together)
         if self._association_pack.run_marker_tests:
@@ -208,3 +205,8 @@ class BOLTRunner:
                 run_cmd(cmd, True)
                 cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + self._association_pack.output_prefix + '.markers.BOLT.stats.tsv.gz'
                 run_cmd(cmd, True)
+
+            outputs.extend([self._association_pack.output_prefix + '.markers.BOLT.stats.tsv.gz',
+                            self._association_pack.output_prefix + '.markers.BOLT.stats.tsv.gz.tbi'])
+
+        return outputs

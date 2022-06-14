@@ -1,12 +1,8 @@
-import dxpy
-import pandas
-import pandas as pd
-import gzip
-
 from os.path import exists
 from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
+
 
 class SAIGERunner:
 
@@ -20,22 +16,20 @@ class SAIGERunner:
 
         # 2. Run SAIGE step two WITH parallelisation by chromosome
         print("Running SAIGE step 2...")
-        thread_utility = ThreadUtility(association_pack.threads, error_message='A SAIGE thread failed', incrementor=10, thread_factor=1)
+        thread_utility = ThreadUtility(self._association_pack.threads, error_message='A SAIGE thread failed', incrementor=10, thread_factor=1)
         for chromosome in get_chromosomes():
-            for tarball_prefix in association_pack.tarball_prefixes:
+            for tarball_prefix in self._association_pack.tarball_prefixes:
                 if exists(tarball_prefix + "." + chromosome + ".SAIGE.bcf"):
                     self._prep_group_file(tarball_prefix, chromosome)
                     thread_utility.launch_job(class_type = self._saige_step_two,
                                               tarball_prefix = tarball_prefix,
-                                              chromosome = chromosome,
-                                              pheno_name = association_pack.pheno_names[0],
-                                              is_binary = association_pack.is_binary)
+                                              chromosome = chromosome)
         future_results = thread_utility.collect_futures()
 
         # 3. Gather preliminary results
         print("Gathering SAIGE mask-based results...")
         completed_gene_tables = []
-        log_file = open(association_pack.output_prefix + '.SAIGE_step2.log', 'w')
+        log_file = open(self._association_pack.output_prefix + '.SAIGE_step2.log', 'w')
         for result in future_results:
             tarball_prefix, finished_chromosome = result
             completed_gene_tables.append(self._process_saige_output(tarball_prefix, finished_chromosome))
@@ -48,33 +42,38 @@ class SAIGERunner:
 
         # 4. Run per-marker tests, if requested
         completed_marker_chromosomes = []
-        if association_pack.run_marker_tests:
+        if self._association_pack.run_marker_tests:
             print("Running per-marker tests...")
-            thread_utility = ThreadUtility(association_pack.threads, error_message='A SAIGE marker thread failed', incrementor=1, thread_factor=1)
+            thread_utility = ThreadUtility(self._association_pack.threads, error_message='A SAIGE marker thread failed', incrementor=1, thread_factor=4)
             for chromosome in get_chromosomes():
                 thread_utility.launch_job(class_type=self._saige_marker_run,
-                                          chromosome=chromosome,
-                                          chrom_bgen_index=association_pack.bgen_dict[chromosome],
-                                          pheno_name=association_pack.pheno_names[0],
-                                          is_binary = association_pack.is_binary)
+                                          chromosome=chromosome)
                 completed_marker_chromosomes.append(chromosome)
-            thread_utility.collect_futures()
+
+            future_results = thread_utility.collect_futures()
+            markers_log_file = open(self._association_pack.output_prefix + '.SAIGE_markers.log', 'w')
+            for result in future_results:
+                finished_chromosome = result
+                markers_log_file.write(
+                    "{s:{c}^{n}}\n".format(s=finished_chromosome + '.log', n=50, c='-'))
+                with open(finished_chromosome + ".SAIGE_markers.log", 'r') as current_log:
+                    for line in current_log:
+                        markers_log_file.write(line)
+                    current_log.close()
+            markers_log_file.close()
+
 
         # 5. Process final results
         print("Processing final SAIGE output...")
-        self._annotate_saige_output(completed_gene_tables, completed_marker_chromosomes)
-        self.outputs = [association_pack.output_prefix + '.SAIGE_step1.log', # Store the log files!
-                        association_pack.output_prefix + '.SAIGE_step2.log',
-                        association_pack.output_prefix + '.genes.SAIGE.stats.tsv.gz',
-                        association_pack.output_prefix + '.genes.SAIGE.stats.tsv.gz.tbi']
-        if association_pack.run_marker_tests:
-            self.outputs.append(association_pack.output_prefix + '.markers.SAIGE.stats.tsv.gz')
-            self.outputs.append(association_pack.output_prefix + '.markers.SAIGE.stats.tsv.gz.tbi')
+        self.outputs = self._annotate_saige_output(completed_gene_tables, completed_marker_chromosomes)
 
     # Run rare variant association testing using SAIGE-GENE
     def _saige_step_one(self) -> None:
 
         # See the README.md for more information on these parameters
+        # Just to note – I previously tried to implement the method that includes variance ratio estimation. However,
+        # there are too few low MAC variants in the genotype files to perform this step accurately. The SAIGE documentation
+        # includes this step, but I am very unsure how it works...
         cmd = 'step1_fitNULLGLMM.R ' \
                     '--phenoFile=/test/phenotypes_covariates.formatted.txt ' \
                     '--phenoCol=' + self._association_pack.pheno_names[0] + " " \
@@ -111,10 +110,10 @@ class SAIGERunner:
 
         run_cmd(cmd, True, self._association_pack.output_prefix + ".SAIGE_step1.log", print_cmd=True)
 
-    # This exists for a very stupid reason – they _heavily_ modified the group File for v1.0 and I haven't gone back
+    # This exists for a very stupid reason – they _heavily_ modified the groupFile for v1.0 and I haven't gone back
     # to change how this file is made in 'collapse variants'
     @staticmethod
-    def _prep_group_file(tarball_prefix: str, chromosome: str):
+    def _prep_group_file(tarball_prefix: str, chromosome: str) -> None:
 
         with open(tarball_prefix + '.' + chromosome + '.SAIGE.groupFile.txt', 'r') as group_file:
             modified_group = open(tarball_prefix + '.' + chromosome + '.SAIGE_v1.0.groupFile.txt', 'w')
@@ -137,8 +136,7 @@ class SAIGERunner:
 
     # This is a helper function to parallelise SAIGE step 2 by chromosome
     # This returns the tarball_prefix and chromosome number to make it easier to generate output
-    @staticmethod
-    def _saige_step_two(tarball_prefix: str, chromosome: str, pheno_name: str, is_binary: bool) -> tuple:
+    def _saige_step_two(self, tarball_prefix: str, chromosome: str) -> tuple:
 
         cmd = "bcftools view --threads 1 -S /test/SAMPLES_Include.txt -Ob -o /test/" + tarball_prefix + "." + chromosome + ".saige_input.bcf /test/" + tarball_prefix + "." + chromosome + ".SAIGE.bcf"
         run_cmd(cmd, True)
@@ -149,7 +147,7 @@ class SAIGERunner:
         cmd = 'step2_SPAtests.R ' \
                 '--vcfFile=/test/' + tarball_prefix + '.' + chromosome + '.saige_input.bcf ' \
                 '--vcfField=GT ' \
-                '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
+                '--GMMATmodelFile=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT.rda ' \
                 '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
                 '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                 '--LOCO=FALSE ' \
@@ -161,32 +159,33 @@ class SAIGERunner:
                 '--chrom=' + chromosome + ' ' \
                 '--annotation_in_groupTest=foo '
 
-        if is_binary:
+        if self._association_pack.is_binary:
             cmd = cmd + '--is_Firth_beta=TRUE'
 
         run_cmd(cmd, True, tarball_prefix + "." + chromosome + ".SAIGE_step2.log")
 
         return tarball_prefix, chromosome
 
-    @staticmethod
-    def _saige_marker_run(chromosome: str, chrom_bgen_index: dict, pheno_name: str, is_binary: bool):
+    def _saige_marker_run(self, chromosome: str) -> str:
 
-        process_bgen_file(chrom_bgen_index, chromosome)
+        process_bgen_file(self._association_pack.bgen_dict[chromosome], chromosome)
 
         cmd = 'step2_SPAtests.R ' \
                     '--bgenFile=/test/' + chromosome + '.markers.bgen ' \
                     '--bgenFileIndex=/test/' + chromosome + '.markers.bgen.bgi ' \
                     '--sampleFile=/test/' + chromosome + '.markers.bolt.sample ' \
-                    '--GMMATmodelFile=/test/' + pheno_name + '.SAIGE_OUT.rda ' \
+                    '--GMMATmodelFile=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT.rda ' \
                     '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
                     '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                     '--SAIGEOutputFile=/test/' + chromosome + '.SAIGE_OUT.SAIGE.markers.txt ' \
                     '--LOCO=FALSE ' \
                     '--is_output_moreDetails=TRUE ' \
                     '--maxMissing=1 '
-        if is_binary:
+        if self._association_pack.is_binary:
             cmd = cmd + '--is_Firth_beta=TRUE'
         run_cmd(cmd, True, chromosome + ".SAIGE_markers.log")
+
+        return chromosome
 
     @staticmethod
     def _process_saige_output(tarball_prefix: str, chromosome: str) -> pandas.DataFrame:
@@ -212,7 +211,7 @@ class SAIGERunner:
 
         return(saige_table)
 
-    def _annotate_saige_output(self, completed_gene_tables: list, completed_marker_chromosomes: list):
+    def _annotate_saige_output(self, completed_gene_tables: list, completed_marker_chromosomes: list) -> list:
 
         saige_table = pd.concat(completed_gene_tables)
 
@@ -240,6 +239,11 @@ class SAIGERunner:
             cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + self._association_pack.output_prefix + '.genes.SAIGE.stats.tsv.gz'
             run_cmd(cmd, True)
 
+        outputs = [self._association_pack.output_prefix + '.SAIGE_step1.log',
+                   self._association_pack.output_prefix + '.SAIGE_step2.log',
+                   self._association_pack.output_prefix + '.genes.SAIGE.stats.tsv.gz',
+                   self._association_pack.output_prefix + '.genes.SAIGE.stats.tsv.gz.tbi']
+
         if self._association_pack.run_marker_tests:
 
             variant_index = []
@@ -263,7 +267,7 @@ class SAIGERunner:
                 saige_table_marker = saige_table_marker.sort_values(by=['CHROM','POS'])
 
                 saige_table_marker.to_csv(path_or_buf=marker_out, index = False, sep="\t", na_rep='NA')
-                gene_out.close()
+                marker_out.close()
 
                 # And bgzip and tabix...
                 cmd = "bgzip /test/" + self._association_pack.output_prefix + '.markers.SAIGE.stats.tsv'
@@ -271,4 +275,8 @@ class SAIGERunner:
                 cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + self._association_pack.output_prefix + '.markers.SAIGE.stats.tsv.gz'
                 run_cmd(cmd, True)
 
+            outputs.append([self._association_pack.output_prefix + '.markers.SAIGE.stats.tsv.gz',
+                            self._association_pack.output_prefix + '.markers.SAIGE.stats.tsv.gz.tbi',
+                            self._association_pack.output_prefix + '.SAIGE_markers.log'])
 
+        return outputs

@@ -5,6 +5,7 @@ import pandas as pd
 import pandas.core.series
 
 from ..tool_runners.glm_runner import GLMRunner
+from ..tool_runners.staar_runner import STAARRunner
 from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
@@ -14,78 +15,83 @@ class ExtractVariants:
     def __init__(self, association_pack: AssociationPack):
 
         self._association_pack = association_pack
-        transcripts_table = build_transcript_table()
 
         # 1. Define our gene-list and make 'gene_info' objects of them (which are Pandas series classes)
         gene_infos = []
         chromosomes = set()
-        # If we are doing extraction based on individual SNPs, we need to make a 'fake' gene info but find all chromosomes
-        if association_pack.is_snp_tar:
-            print("Running extract variants in SNP mode...")
-            gene_info = pd.Series({'chrom': 'SNP', 'SYMBOL': 'SNP'})
-            gene_info.name = 'ENST00000000000'
+        # If we are doing extraction based on individual SNPs or a Gene list, we need to make a 'fake' gene info
+        # but find all chromosomes those SNPS/Genes lie on
+        if self._association_pack.is_non_standard_tar:
+            gene_info, returned_chromosomes = process_snp_or_gene_tar(self._association_pack.is_snp_tar, self._association_pack.is_gene_tar, self._association_pack.tarball_prefixes[0])
             gene_infos.append(gene_info)
-            sparse_matrix = csv.DictReader(open(association_pack.tarball_prefixes[0] + '.SNP.variants_table.STAAR.tsv', 'r'),
-                                           delimiter="\t",
-                                           quoting=csv.QUOTE_NONE)
-            for row in sparse_matrix:
-                chromosomes.add(str(row['chrom']))
-
-            # And filter the relevant SAIGE file to just the individuals we want so we can get actual MAC
-            cmd = "bcftools view --threads 4 -S /test/SAMPLES_Include.txt -Ob -o /test/" + association_pack.tarball_prefixes[0] + ".SNP.saige_input.bcf /test/" + association_pack.tarball_prefixes[0] + ".SNP.SAIGE.bcf"
-            run_cmd(cmd, True)
+            chromosomes = returned_chromosomes
         else:
             for gene in self._association_pack.gene_ids:
+                transcripts_table = build_transcript_table()
                 gene_info = get_gene_id(gene, transcripts_table)
                 gene_infos.append(gene_info)
                 chromosomes.add(gene_info['chrom'])
 
-        # 2. Load per-chromosome genotype/variant information
+        # 2. Download variant VEP annotations
         print("Loading VEP annotations...")
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=5,thread_factor=4)
         for chromosome in chromosomes:
             thread_utility.launch_job(self._download_vep,
-                                      chromosome = chromosome,
-                                      vep_dx=dxpy.DXFile(association_pack.bgen_dict[chromosome]['vep']))
+                                      chromosome = chromosome)
         thread_utility.collect_futures()
 
         # 3. Filter relevant files to individuals we want to keep
         print("Filtering variant files to appropriate individuals...")
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=4)
-        for chromosome in set(['SNP']) if self._association_pack.is_snp_tar else chromosomes: # Just allows me to filter SNP vcfs if required...
-            for tarball_prefix in association_pack.tarball_prefixes:
+
+        # if, elif, else simply depends on which type of tarball we are using
+        if self._association_pack.is_snp_tar:
+            for tarball_prefix in self._association_pack.tarball_prefixes:
                 thread_utility.launch_job(self._filter_individuals,
-                                          tarball_prefix = tarball_prefix,
-                                          chromosome = chromosome)
+                                          tarball_prefix=tarball_prefix,
+                                          chromosome='SNP')
+        elif self._association_pack.is_gene_tar:
+            for tarball_prefix in self._association_pack.tarball_prefixes:
+                thread_utility.launch_job(self._filter_individuals,
+                                          tarball_prefix=tarball_prefix,
+                                          chromosome='GENE')
+        else:
+            for chromosome in chromosomes:
+                for tarball_prefix in self._association_pack.tarball_prefixes:
+                    thread_utility.launch_job(self._filter_individuals,
+                                              tarball_prefix=tarball_prefix,
+                                              chromosome=chromosome)
         thread_utility.collect_futures()
 
         # 4. Actually collect variant information per-gene
         print("Extracting variant information...")
-        genes_to_run = [] # This just enables easy parallelisation with GLMRunner() – we use this to run all genes at once rather than 1 by 1
         thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=2)
         for gene_info in gene_infos:
-            genes_to_run.append(gene_info.name)
-            for tarball_prefix in association_pack.tarball_prefixes:
+
+            for tarball_prefix in self._association_pack.tarball_prefixes:
                 thread_utility.launch_job(self._annotate_variants,
                                           tarball_prefix=tarball_prefix,
                                           gene_info=gene_info,
-                                          output_prefix=association_pack.output_prefix,
-                                          chromosomes=chromosomes if self._association_pack.is_snp_tar else None)
+                                          chromosomes=chromosomes if self._association_pack.is_non_standard_tar else None)
         self.outputs = []
         future_results = thread_utility.collect_futures()
         for result in future_results:
             self.outputs.extend(result)
 
-        # 5. And run a linear model for all genes
+        # 5. And run a linear and STAAR model(s) for all genes
         print("Running linear models...")
-        glm_run = GLMRunner(association_pack, genes_to_run=genes_to_run)
-        self.outputs.extend(glm_run.outputs)
-        os.rename('phenotypes_covariates.formatted.txt', association_pack.output_prefix + '.phenotypes_covariates.formatted.tsv')
-        self.outputs.append(association_pack.output_prefix + '.phenotypes_covariates.formatted.tsv')
+        GLMRunner(self._association_pack, gene_infos=gene_infos)
+        STAARRunner(self._association_pack, gene_infos=gene_infos)
 
-    @staticmethod
-    def _download_vep(chromosome: str, vep_dx: dxpy.DXFile) -> None:
+        self.outputs.extend(merge_glm_staar_runs(self._association_pack)) # Function merges STAAR and GLM results together
 
+        # 6. Finally add the phenotypes/covariates table to the outputs
+        os.rename('phenotypes_covariates.formatted.txt', self._association_pack.output_prefix + '.phenotypes_covariates.formatted.tsv')
+        self.outputs.append(self._association_pack.output_prefix + '.phenotypes_covariates.formatted.tsv')
+
+    def _download_vep(self, chromosome: str) -> None:
+
+        vep_dx = dxpy.DXFile(self._association_pack.bgen_dict[chromosome]['vep'])
         dxpy.download_dxfile(vep_dx.get_id(), chromosome + ".filtered.vep.tsv.gz")
 
     @staticmethod
@@ -94,11 +100,13 @@ class ExtractVariants:
         cmd = "bcftools view --threads 4 -S /test/SAMPLES_Include.txt -Ob -o /test/" + tarball_prefix + "." + chromosome + ".saige_input.bcf /test/" + tarball_prefix + "." + chromosome + ".SAIGE.bcf"
         run_cmd(cmd, True)
 
-    @staticmethod
-    def _annotate_variants(tarball_prefix: str, gene_info: pandas.core.series.Series, output_prefix: str, chromosomes: set) -> list:
+    def _annotate_variants(self, tarball_prefix: str, gene_info: pandas.core.series.Series, chromosomes: set) -> list:
 
-        # The point here is that if we have a SNP tar, we may need to load in variant annotations for multiple chromosomes
-        # If just a single gene (chromosomes = None), only need to load the data for the chromosome that gene is on
+        # This is a bit confusing, so explaining in full.
+        # We need to annotate EACH GENE separately EXCEPT when running a SNP/GENE list tarball, SO...
+        # 1. If we have a SNP/GENE tar, we may need to load in variant annotations for multiple chromosomes, so we set 'chromosomes'
+        # to a set of chromosomes that we extract from the SNP/GENE tar.
+        # 2. If just a single gene or gene list (chromosomes = None), only need to load the data for the chromosome that specific Gene is on
         if chromosomes is None:
             chromosome = gene_info['chrom']
             with warnings.catch_warnings():
@@ -109,11 +117,11 @@ class ExtractVariants:
             for chromosome in chromosomes:
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep="\t")
+                    variant_index.append(pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep="\t"))
             variant_index = pd.concat(variant_index)
 
         # Need to get the variants from the SAIGE groupfile:
-        with open(tarball_prefix + "." + chromosome + ".SAIGE.groupFile.txt") as saige_group_file:
+        with open(tarball_prefix + "." + gene_info['chrom'] + ".SAIGE.groupFile.txt") as saige_group_file:
             var_ids = []
             var_file = open(tarball_prefix + "." + gene_info['SYMBOL'] + '.variants.txt', 'w')
             for line in saige_group_file:
@@ -129,7 +137,7 @@ class ExtractVariants:
         relevant_vars = variant_index[variant_index['varID'].isin(var_ids)]
 
         # Filter to the variants for this gene
-        cmd = "bcftools view --threads 2 -i \'ID=@/test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".variants.txt\' -Ob -o /test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".variant_filtered.bcf /test/" + tarball_prefix + "." + chromosome + ".saige_input.bcf"
+        cmd = "bcftools view --threads 2 -i \'ID=@/test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".variants.txt\' -Ob -o /test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".variant_filtered.bcf /test/" + tarball_prefix + "." + gene_info['chrom'] + ".saige_input.bcf"
         run_cmd(cmd, True)
         cmd = "bcftools +fill-tags --threads 4 -Ob -o /test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".final.bcf /test/" + tarball_prefix + "." + gene_info['SYMBOL'] + ".variant_filtered.bcf"
         run_cmd(cmd, True)
@@ -150,8 +158,8 @@ class ExtractVariants:
                                      sep="\t",
                                      names=['CHROM','POS','varID','REF','ALT','IID','GT'])
 
-        variant_file = output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.variant_table.tsv'
-        carriers_file = output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.carriers_formatted.tsv'
+        variant_file = self._association_pack.output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.variant_table.tsv'
+        carriers_file = self._association_pack.output_prefix + "." + tarball_prefix + "." + gene_info['SYMBOL'] + '.carriers_formatted.tsv'
         geno_table.to_csv(path_or_buf=variant_file, index = False, sep="\t", na_rep='NA')
         carriers_table.to_csv(path_or_buf=carriers_file, index = False, sep="\t", na_rep='NA')
 

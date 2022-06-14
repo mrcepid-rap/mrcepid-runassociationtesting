@@ -53,8 +53,8 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
 
     # Now do specific analysis depending on selected 'mode':
     if mode == 'burden':
-        if association_pack.is_snp_tar and tool != 'glm':
-            raise dxpy.AppError("Burden tests other than GLMs currently do not allow for a SNP-based tar file. Please use the 'extract' or 'phewas' modes or change tool to 'glm'.")
+        if (association_pack.is_non_standard_tar) and (tool != 'glm' or tool != 'staar'):
+            raise dxpy.AppError("Burden tests other than GLMs/STAAR currently do not allow for a SNP/GENE-based tar file. Please use the 'extract' or 'phewas' modes or change tool to 'glm'.")
         # Run the selected tool
         if tool == 'bolt':
             print("Running BOLT")
@@ -73,13 +73,13 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
             tool_run = REGENIERunner(association_pack)
 
     elif mode == 'extract':
-        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
-            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
+        if association_pack.gene_ids is None and association_pack.is_non_standard_tar is False:
+            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP/GENE-list tar.")
         tool_run = ExtractVariants(association_pack)
 
     elif mode == 'phewas':
-        if association_pack.gene_ids is None and association_pack.is_snp_tar is False:
-            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP-list tar.")
+        if association_pack.gene_ids is None and association_pack.is_non_standard_tar is False:
+            raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP/GENE-list tar.")
         tool_run = PheWAS(association_pack)
 
     # Create tar of all possible output files
