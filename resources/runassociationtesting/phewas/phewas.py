@@ -1,4 +1,6 @@
 import csv
+import sys
+
 import numpy as np
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import PerfectSeparationError
@@ -101,6 +103,8 @@ class PheWAS:
 
         # 7. Merging GLM/STAAR runs:
         self.outputs.extend(merge_glm_staar_runs(self._association_pack))  # Function merges STAAR and GLM results together
+
+        sys.exit(1)
 
     # I think this is the most efficient way to do this on a large memory machine where I can store everything in
     # one massive DataFrame. Everything else I have tried takes a very long time!

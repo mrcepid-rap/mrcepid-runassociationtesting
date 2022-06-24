@@ -72,7 +72,7 @@ class GLMRunner:
         # This 'if/else' allows us to provide a subset of models that we want to run, if selected
         for model in genotype_packs:
             if self._gene_infos is None:
-                for gene in genotype_packs[model]:
+                for gene in genotype_packs[model].index.levels[0]: # level[0] in this DataFrame is ENST
                     thread_utility.launch_job(self._linear_model_genes,
                                               linear_model_pack = returned_pack,
                                               genotype_table = genotype_packs[model],

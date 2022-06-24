@@ -134,6 +134,7 @@ def get_gene_id(gene_id: str, transcripts_table: pandas.DataFrame) -> pandas.cor
         else:
             gene_info = None
             print("Did not find an associated ENST ID for SYMBOL %s... Please re-run after checking SYMBOL/ENST used..." % (gene_id))
+            raise Exception("ENST ID not found")
 
     return gene_info
 
@@ -142,11 +143,11 @@ def process_snp_or_gene_tar(is_snp_tar, is_gene_tar, tarball_prefix) -> tuple:
 
     file_prefix = None
     if is_snp_tar:
-        print("Running extract variants in SNP mode...")
+        print("Running in SNP mode...")
         file_prefix = 'SNP'
         gene_id = 'ENST00000000000'
     elif is_gene_tar:
-        print("Running extract variants in GENE mode...")
+        print("Running in GENE mode...")
         file_prefix = 'GENE'
         gene_id = 'ENST99999999999'
 

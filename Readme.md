@@ -84,6 +84,12 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.2.2
+  * Added language to the README to support running in gene-list mode (see mrcepid-collapsevariants for more details)
+  * Additional bug-fix updates for v1.2.0
+    * Added better error message for when a gene symbol is not found
+  * Fixed a bug in GLMs where iteration over gene lists was not happening properly
+
 * v1.2.1
   * Bug-fix update for v1.2.0
   * Adds improved output formatting in PheWAS mode
@@ -847,8 +853,8 @@ sensible defaults for these files and only change them if running from a differe
 As discussed above, this applet can be run in one of three modes with each of these modes requiring slightly different inputs:
 
 1. `burden` - requires the `tool` option. Providing `gene_ids` does nothing.
-2. `extract` – requires `gene_ids` UNLESS providing a SNP tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
-3. `phewas` – requires `gene_ids` UNLESS providing a SNP tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+2. `extract` – requires `gene_ids` UNLESS providing a SNP/GENE tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+3. `phewas` – requires `gene_ids` UNLESS providing a SNP/GENE tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
 
 **Note:** – tool outputs and functionality is further changed depending on whether the provided tarball was generated using a 
 list of variant IDs from mrcepid-collapsevariants.
@@ -860,8 +866,6 @@ separate phenotype files and use the `is_binary` flag accordingly.
 
 `association_tarballs` takes either a single DNANexus file-ID that points to a single output from the 'mrcepid-collapsevariants' tool **OR** 
 a file with multiple such DNANexus file-IDs. This file is one file-ID per line, like:
-
-**NOTE:** The REVEL > 0.5 mask **DOES NOT WORK** with SAIGE-GENE. Do not use it. I do not know why!
 
 ```text
 file-G7z31B0J6F3ZbpGK6J0y2xxF
@@ -880,6 +884,11 @@ is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v
 `project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see the 
 [high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information on
 pre-collapsed variant files.
+
+##### SNP and GENE Tarballs
+
+Users can also provide a tarball from [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
+that was created using a SNP or GENE list. Only *one* tar can be used at a time when running in SNP or GENE list mode.
 
 #### Phenotypes File
 
@@ -992,29 +1001,31 @@ containing per-gene burden tests. An index for easy querying with tabix is also 
 Columns include those in the standard tool output. Additional columns contain per-gene information derived from in the
 file `transcripts.tsv.gz (file-G7xyzF8JJv8kyV7q5z8VV3Vb)` in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. These columns include:
    
-| column name       | description                                                                                                                               |
-| ----------------- |-------------------------------------------------------------------------------------------------------------------------------------------|
-| ENST              | ENSMBL ENST ID. Will normally be the ENST ID that corresponds to MANE transcript or the ENSEMBL canonical transcript except in rare cases |
-| chrom             | chromosome of this gene *without* the 'chr' prefix                                                                                        |
-| start             | transcription start coordinate in hg38                                                                                                    |
-| end               | transcription stop coordinate in hg38                                                                                                     |
-| ENSG              | ENSEMBL ENSG corresponding to ENST                                                                                                        |
-| MANE              | MANE v0.93 transcript                                                                                                                     |
-| transcript length | end - start                                                                                                                               |
-| SYMBOL            | HGNC gene name                                                                                                                            |
-| CANONICAL         | Is ENST the ENSEMBL canonical transcript?                                                                                                 |
-| BIOTYPE           | Should *always* be protein_coding                                                                                                         |
-| cds_length        | translation stop - translation start accounting for intron length                                                                         |
-| coord             | formatted 'chrom:start-end' with chr prefix for aid in lookup on databases                                                                |
-| manh.pos          | relative position in the genome on a scale of 0-1 (chr1:1 = 0, chrY:14522573 = 1) for easy manhattan plot creation                        |
+| column name       | description                                                                                                                                                                                                                                                                   |
+| ----------------- |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ENST              | ENSMBL ENST ID. Will normally be the ENST ID that corresponds to MANE transcript or the ENSEMBL canonical transcript except in rare cases. When running in SNP or GENE list mode, this column will contain the dummy value of ENST0000000000 or ENST99999999999, respectively |
+| chrom             | chromosome of this gene *without* the 'chr' prefix                                                                                                                                                                                                                            |
+| start             | transcription start coordinate in hg38                                                                                                                                                                                                                                        |
+| end               | transcription stop coordinate in hg38                                                                                                                                                                                                                                         |
+| ENSG              | ENSEMBL ENSG corresponding to ENST                                                                                                                                                                                                                                            |
+| MANE              | MANE v0.93 transcript                                                                                                                                                                                                                                                         |
+| transcript length | end - start                                                                                                                                                                                                                                                                   |
+| SYMBOL            | HGNC gene name                                                                                                                                                                                                                                                                |
+| CANONICAL         | Is ENST the ENSEMBL canonical transcript?                                                                                                                                                                                                                                     |
+| BIOTYPE           | Should *always* be protein_coding                                                                                                                                                                                                                                             |
+| cds_length        | translation stop - translation start accounting for intron length                                                                                                                                                                                                             |
+| coord             | formatted 'chrom:start-end' with chr prefix for aid in lookup on databases                                                                                                                                                                                                    |
+| manh.pos          | relative position in the genome on a scale of 0-1 (chr1:1 = 0, chrY:14522573 = 1) for easy manhattan plot creation                                                                                                                                                            |
 
    **Note:** If a transcript ID is NOT found in `transcripts.tsv.gz`, this information **WILL NOT** be included in final
    output.
 
-   Additional columns derived from the prefix of input tarfiles from `collapsevariants` will also be included. These columns 
-   will be labelled as `var1`, `var2`, etc. DELIMITED by '-'. For example, if the tarfile name is "HC_PTV-MAF_01.tar.gz", 
-   column `var1` will include "HC_PTV" and column `var2` will include "MAF_01". The software currently does not have a method
-   for naming these columns otherwise.
+   Additional columns derived from the prefix of input tarfiles from `collapsevariants` will also be included. If the 
+   tar is named like "HC_PTV-MAF_01", these additional columns will be headed as 'MASK' and 'MAF' respectively. This 
+   functionality is trigged by the second value delimited by '-' having the prefix of 'MAF' or 'AC' (e.g. MAF_01, MAF_1,
+   MAF_005, etc). Otherwise, will be labelled as `var1`, `var2`, etc. as DELIMITED by '-'. For example, if the tarfile 
+   name is "Foo-Bar.tar.gz", column `var1` will include "Foo" and column `var2` will include "Bar". The software 
+   currently does not have a method for naming these columns otherwise except for the special case as mentioned above.
   
 #### Extract and PheWAS mode outputs
 

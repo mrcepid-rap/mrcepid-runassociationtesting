@@ -75,11 +75,15 @@ def main(association_tarballs, tool, mode, gene_ids, is_binary, sex,
     elif mode == 'extract':
         if association_pack.gene_ids is None and association_pack.is_non_standard_tar is False:
             raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP/GENE-list tar.")
+        if association_pack.gene_ids is not None and association_pack.is_non_standard_tar is True:
+            raise dxpy.AppError("Cannot provide gene_ids if running 'extract' mode with a SNP/GENE-list tar.")
         tool_run = ExtractVariants(association_pack)
 
     elif mode == 'phewas':
         if association_pack.gene_ids is None and association_pack.is_non_standard_tar is False:
             raise dxpy.AppError("Must provide gene_ids if running 'extract' mode without a SNP/GENE-list tar.")
+        if association_pack.gene_ids is not None and association_pack.is_non_standard_tar is True:
+            raise dxpy.AppError("Cannot provide gene_ids if running 'phewas' mode with a SNP/GENE-list tar.")
         tool_run = PheWAS(association_pack)
 
     # Create tar of all possible output files
