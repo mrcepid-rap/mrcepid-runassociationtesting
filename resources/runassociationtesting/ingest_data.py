@@ -94,7 +94,7 @@ class IngestData:
             tarball_name = dxtarballs.describe()['name']
             dxpy.download_dxfile(dxtarballs, tarball_name)
             if tarfile.is_tarfile(tarball_name):
-                tarball_prefix = tarball_name.rstrip('.tar.gz')
+                tarball_prefix = tarball_name.replace(".tar.gz", "")
                 self.tarball_prefixes.append(tarball_prefix)
                 tar = tarfile.open(tarball_name, "r:gz")
                 tar.extractall()
