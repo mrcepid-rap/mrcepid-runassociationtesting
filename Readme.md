@@ -84,6 +84,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.2.3
+  * Fixed a bug related to parsing of .tar.gz files provided from collapsevariants 
+
 * v1.2.2
   * Added language to the README to support running in gene-list mode (see mrcepid-collapsevariants for more details)
   * Additional bug-fix updates for v1.2.0
