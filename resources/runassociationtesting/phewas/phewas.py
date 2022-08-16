@@ -5,7 +5,6 @@ import numpy as np
 import statsmodels.api as sm
 from statsmodels.tools.sm_exceptions import PerfectSeparationError
 
-from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..tool_runners.glm_runner import GLMRunner
 from ..tool_runners.staar_runner import STAARRunner

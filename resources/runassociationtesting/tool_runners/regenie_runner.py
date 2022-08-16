@@ -44,18 +44,6 @@ class REGENIERunner:
                                               chromosome=chromosome)
         thread_utility.collect_futures()
 
-        # chromosome = '6'
-        # tarball_prefix = 'HC_PTV-MAF_01'
-        # self.outputs = [chromosome + '.markers.bgen',
-        #                 chromosome + '.markers.bolt.sample',
-        #                 'phenotypes_covariates.formatted.txt',
-        #                 'fit_out_pred.list',
-        #                 'fit_out.log',
-        #                 'fit_out_1.loco',
-        #                 tarball_prefix + '.' + chromosome + '.REGENIE.annotationFile.tsv',
-        #                 tarball_prefix + '.' + chromosome + '.REGENIE.setListFile.tsv',
-        #                 tarball_prefix + '.' + chromosome + '.REGENIE.maskfile.tsv']
-
         # 4. Run step 2 of regenie
         print("Running REGENIE step 2")
         thread_utility = ThreadUtility(self._association_pack.threads, error_message='A REGENIE step 2 thread failed', incrementor=10,
@@ -87,8 +75,10 @@ class REGENIERunner:
         completed_marker_chromosomes = []
         if self._association_pack.run_marker_tests:
             print("Running per-marker tests...")
-            thread_utility = ThreadUtility(self._association_pack.threads, error_message='A SAIGE marker thread failed',
-                                           incrementor=1, thread_factor=4)
+            thread_utility = ThreadUtility(self._association_pack.threads,
+                                           error_message='A SAIGE marker thread failed',
+                                           incrementor=1,
+                                           thread_factor=4)
             for chromosome in get_chromosomes():
                 thread_utility.launch_job(class_type=self._regenie_marker_run,
                                           chromosome=chromosome)

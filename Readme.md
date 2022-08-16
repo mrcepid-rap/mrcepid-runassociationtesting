@@ -326,10 +326,10 @@ applet included in this repository. Please see that repository for more informat
 
 ## Methodology
 
-This applet is step 6 (mrc-runassociationtesting) of the rare variant testing pipeline developed by Eugene Gardner for the UKBiobank
+This applet is step 5 (mrc-runassociationtesting) of the rare variant testing pipeline developed by Eugene Gardner for the UKBiobank
 RAP at the MRC Epidemiology Unit:
 
-![](https://github.com/mrcepid-rap/.github/blob/main/images/RAPPipeline.png)
+![](https://github.com/mrcepid-rap/.github/blob/main/images/RAPPipeline.v3.png)
 
 This applet uses the final output of [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
 to perform rare variant burden testing. As such, the filtering for variants that the user provided beginning with [mrcepid-collapsevariants](https://github.com/mrcepid-rap/mrcepid-collapsevariants.git)
