@@ -79,8 +79,8 @@ class BOLTRunner:
 
         # See the README.md for more information on these parameters
         cmd = "bolt " + \
-                "--bfile=/test/genetics/UKBB_450K_Autosomes_QCd_WBA " \
-                "--exclude=/test/genetics/UKBB_450K_Autosomes_QCd.low_MAC.snplist " \
+                "--bfile=/test/genetics/UKBB_470K_Autosomes_QCd_WBA " \
+                "--exclude=/test/genetics/UKBB_470K_Autosomes_QCd.low_MAC.snplist " \
                 "--phenoFile=/test/phenotypes_covariates.formatted.txt " \
                 "--phenoCol=" + self._association_pack.pheno_names[0] + " " \
                 "--covarFile=/test/phenotypes_covariates.formatted.txt " \
@@ -119,11 +119,7 @@ class BOLTRunner:
 
         # Now process the gene table into a useable format:
         # First read in the transcripts file
-        transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
-        transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
-        transcripts_table = transcripts_table.set_index('ENST')
-        transcripts_table = transcripts_table[transcripts_table['fail'] == False]
-        transcripts_table = transcripts_table.drop(columns=['syn.count','fail.cat','fail'])
+        transcripts_table = build_transcript_table()
 
         # Test what columns we have in the 'SNP' field so we can name them...
         field_one = bolt_table_gene.iloc[0]
@@ -182,7 +178,9 @@ class BOLTRunner:
             variant_index = []
             # Open all chromosome indicies and load them into a list and append them together
             for chromosome in get_chromosomes():
-                variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t"))
+                variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'),
+                                                 sep="\t",
+                                                 dtype={'SIFT': str, 'POLYPHEN': str}))
 
             variant_index = pd.concat(variant_index)
             variant_index = variant_index.set_index('varID')

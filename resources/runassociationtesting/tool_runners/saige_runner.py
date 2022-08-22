@@ -80,8 +80,8 @@ class SAIGERunner:
                     '--isCovariateTransform=FALSE ' \
                     '--sampleIDColinphenoFile=IID ' \
                     '--outputPrefix=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT ' \
-                    '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
-                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
+                    '--sparseGRMFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx ' \
+                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                     '--nThreads=' + str(self._association_pack.threads) + ' ' \
                     '--LOCO=FALSE ' \
                     '--skipModelFitting=FALSE ' \
@@ -148,8 +148,8 @@ class SAIGERunner:
                 '--vcfFile=/test/' + tarball_prefix + '.' + chromosome + '.saige_input.bcf ' \
                 '--vcfField=GT ' \
                 '--GMMATmodelFile=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT.rda ' \
-                '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
-                '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
+                '--sparseGRMFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx ' \
+                '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                 '--LOCO=FALSE ' \
                 '--SAIGEOutputFile=/test/' + tarball_prefix + '.' + chromosome + '.SAIGE_OUT.SAIGE.gene.txt ' \
                 '--groupFile=/test/' + tarball_prefix + '.' + chromosome + '.SAIGE_v1.0.groupFile.txt ' \
@@ -175,8 +175,8 @@ class SAIGERunner:
                     '--bgenFileIndex=/test/' + chromosome + '.markers.bgen.bgi ' \
                     '--sampleFile=/test/' + chromosome + '.markers.bolt.sample ' \
                     '--GMMATmodelFile=/test/' + self._association_pack.pheno_names[0] + '.SAIGE_OUT.rda ' \
-                    '--sparseGRMFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx ' \
-                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
+                    '--sparseGRMFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx ' \
+                    '--sparseGRMSampleIDFile=/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt ' \
                     '--SAIGEOutputFile=/test/' + chromosome + '.SAIGE_OUT.SAIGE.markers.txt ' \
                     '--LOCO=FALSE ' \
                     '--is_output_moreDetails=TRUE ' \
@@ -217,11 +217,7 @@ class SAIGERunner:
 
         # Now process the gene table into a useable format:
         # First read in the transcripts file
-        transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
-        transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
-        transcripts_table = transcripts_table.set_index('ENST')
-        transcripts_table = transcripts_table[transcripts_table['fail'] == False]
-        transcripts_table = transcripts_table.drop(columns=['syn.count','fail.cat','fail'])
+        transcripts_table = build_transcript_table()
 
         # Now merge the transcripts table into the gene table to add annotation and the write
         saige_table = pd.merge(transcripts_table, saige_table, on='ENST', how="left")
@@ -250,8 +246,10 @@ class SAIGERunner:
             saige_table_marker = []
             # Open all chromosome indicies and load them into a list and append them together
             for chromosome in completed_marker_chromosomes:
-                variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t"))
-                saige_table_marker.append(pd.read_csv(chromosome + ".SAIGE_OUT.SAIGE.markers.txt", sep = "\t"))
+                variant_index.append(pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'),
+                                                 sep="\t",
+                                                 dtype={'SIFT': str, 'POLYPHEN': str}))
+                saige_table_marker.append(pd.read_csv(chromosome + ".SAIGE_OUT.SAIGE.markers.txt", sep="\t"))
 
             variant_index = pd.concat(variant_index)
             variant_index = variant_index.set_index('varID')

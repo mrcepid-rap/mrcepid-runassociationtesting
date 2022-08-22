@@ -165,7 +165,7 @@ class REGENIERunner:
 
             # And generate a SNP list for the --extract parameter of REGENIE
             max_mac = (n_samples * 2) - 100
-            cmd = 'plink2 --bfile /test/genetics/UKBB_450K_Autosomes_QCd_WBA ' \
+            cmd = 'plink2 --bfile /test/genetics/UKBB_470K_Autosomes_QCd_WBA ' \
                   '--mac 100 ' \
                   '--max-mac ' + str(max_mac) + \
                   ' --write-snplist ' \
@@ -174,7 +174,7 @@ class REGENIERunner:
 
         cmd = 'regenie ' \
               '--step 1 ' \
-              '--bed /test/genetics/UKBB_450K_Autosomes_QCd_WBA ' \
+              '--bed /test/genetics/UKBB_470K_Autosomes_QCd_WBA ' \
               '--extract /test/REGENIE_extract.snplist ' \
               '--covarFile /test/phenotypes_covariates.formatted.txt ' \
               '--phenoFile /test/phenotypes_covariates.formatted.txt ' \
@@ -328,11 +328,7 @@ class REGENIERunner:
 
         # Now process the gene table into a useable format:
         # First read in the transcripts file
-        transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep="\t")
-        transcripts_table = transcripts_table.rename(columns={'#chrom': 'chrom'})
-        transcripts_table = transcripts_table.set_index('ENST')
-        transcripts_table = transcripts_table[transcripts_table['fail'] == False]
-        transcripts_table = transcripts_table.drop(columns=['syn.count', 'fail.cat', 'fail'])
+        transcripts_table = build_transcript_table()
 
         # Now merge the transcripts table into the gene table to add annotation and the write
         regenie_table = pd.merge(transcripts_table, regenie_table, left_index=True, right_index=True, how="left")
@@ -362,7 +358,9 @@ class REGENIERunner:
             # Open all chromosome indicies and load them into a list and append them together
             for chromosome in completed_marker_chromosomes:
                 variant_index.append(
-                    pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'), sep="\t"))
+                    pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'),
+                                sep="\t",
+                                dtype={'SIFT': str, 'POLYPHEN': str}))
                 regenie_table_marker.append(pd.read_csv(chromosome + ".markers.REGENIE_" + self._association_pack.pheno_names[0] + ".regenie", sep=' '))
 
             variant_index = pd.concat(variant_index)

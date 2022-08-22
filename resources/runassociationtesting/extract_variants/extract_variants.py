@@ -1,14 +1,10 @@
-import csv
-import warnings
-
-import pandas as pd
 import pandas.core.series
 
 from ..tool_runners.glm_runner import GLMRunner
 from ..tool_runners.staar_runner import STAARRunner
-from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
+
 
 class ExtractVariants:
 
@@ -109,15 +105,15 @@ class ExtractVariants:
         # 2. If just a single gene or gene list (chromosomes = None), only need to load the data for the chromosome that specific Gene is on
         if chromosomes is None:
             chromosome = gene_info['chrom']
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep = "\t")
+            variant_index = pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'),
+                                        sep = "\t",
+                                        dtype={'SIFT': str, 'POLYPHEN': str})
         else:
             variant_index = []
             for chromosome in chromosomes:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    variant_index.append(pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'), sep="\t"))
+                variant_index.append(pd.read_csv(gzip.open(chromosome + ".filtered.vep.tsv.gz", 'rt'),
+                                                 sep="\t",
+                                                 dtype={'SIFT': str,'POLYPHEN': str}))
             variant_index = pd.concat(variant_index)
 
         # Need to get the variants from the SAIGE groupfile:

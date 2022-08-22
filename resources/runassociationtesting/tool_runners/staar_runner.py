@@ -161,11 +161,7 @@ class STAARRunner:
 
             # Now process the gene table into a useable format:
             # First read in the transcripts file
-            transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
-            transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
-            transcripts_table = transcripts_table.set_index('ENST')
-            transcripts_table = transcripts_table[transcripts_table['fail'] == False]
-            transcripts_table = transcripts_table.drop(columns=['syn.count','fail.cat','fail'])
+            transcripts_table = build_transcript_table()
 
             # Limit to genes we care about if running only a subset:
             if self._gene_infos is not None:

@@ -103,12 +103,14 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
     run_cmd(cmd, True)
 
 
+# Build the pandas DataFrame of transcripts
 def build_transcript_table() -> pandas.DataFrame:
 
-    transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
-    transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
+    transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep="\t")
     transcripts_table = transcripts_table.set_index('ENST')
-    return(transcripts_table)
+    transcripts_table = transcripts_table[transcripts_table['fail'] == False]
+    transcripts_table = transcripts_table.drop(columns=['syn.count', 'fail.cat', 'fail'])
+    return transcripts_table
 
 
 def get_gene_id(gene_id: str, transcripts_table: pandas.DataFrame) -> pandas.core.series.Series:
@@ -198,11 +200,7 @@ def process_linear_model_outputs(association_pack: AssociationPack, gene_infos: 
 
         # Now process the gene table into a useable format:
         # First read in the transcripts file
-        transcripts_table = pd.read_csv(gzip.open('transcripts.tsv.gz', 'rt'), sep = "\t")
-        transcripts_table = transcripts_table.rename(columns={'#chrom':'chrom'})
-        transcripts_table = transcripts_table.set_index('ENST')
-        transcripts_table = transcripts_table[transcripts_table['fail'] == False]
-        transcripts_table = transcripts_table.drop(columns=['syn.count','fail.cat','fail'])
+        transcripts_table = build_transcript_table()
 
         # Limit to genes we care about if running only a subset:
         if valid_genes is not None:

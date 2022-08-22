@@ -84,6 +84,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v.1.2.4
+  * Made filename updates to the codebase to reflect release of the 470k dataset
+  * Code which loads VEP annotations was identical in multiple locations. Switched to a single function in association_resources.py
+
 * v1.2.3
   * Fixed a bug related to parsing of .tar.gz files provided from collapsevariants 
 
@@ -963,9 +967,9 @@ and ENST IDs must also be in the file specified by `transcript_index` (default: 
 
 ### Outputs
 
-|output                 | description                            |
-|-----------------------|----------------------------------------|
-|output_tarball         | Output tarball containing test results |
+| output                   | description                            |
+|--------------------------|----------------------------------------|
+| output_tarball           | Output tarball containing test results |
 
 output_tarball is either named `assoc_results.tar.gz` by default. If the parameter `output_prefix` is provided a file like (set `-ioutput_prefix="PTV"`):
 
@@ -1005,7 +1009,7 @@ Columns include those in the standard tool output. Additional columns contain pe
 file `transcripts.tsv.gz (file-G7xyzF8JJv8kyV7q5z8VV3Vb)` in project `project-G6BJF50JJv8p4PjGB9yy7YQ2`. These columns include:
    
 | column name       | description                                                                                                                                                                                                                                                                   |
-| ----------------- |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | ENST              | ENSMBL ENST ID. Will normally be the ENST ID that corresponds to MANE transcript or the ENSEMBL canonical transcript except in rare cases. When running in SNP or GENE list mode, this column will contain the dummy value of ENST0000000000 or ENST99999999999, respectively |
 | chrom             | chromosome of this gene *without* the 'chr' prefix                                                                                                                                                                                                                            |
 | start             | transcription start coordinate in hg38                                                                                                                                                                                                                                        |

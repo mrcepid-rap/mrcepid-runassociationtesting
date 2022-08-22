@@ -1,9 +1,6 @@
-import csv
 import tarfile
-
 from os.path import exists
 
-import dxpy
 
 from association_resources import *
 
@@ -12,7 +9,7 @@ from association_resources import *
 # than just external dependencies
 class IngestData:
 
-    def __init__(self, association_tarballs: dict, phenofile: dict, covarfile: dict, inclusion_list: dict,
+    def __init__(self, association_tarballs: dict, phenofile: list, covarfile: dict, inclusion_list: dict,
                  exclusion_list: dict, bgen_index: dict, transcript_index: dict, base_covariates: dict,
                  bed_file: dict, fam_file: dict, bim_file: dict, low_MAC_list: dict,
                  sparse_grm: dict, sparse_grm_sample: dict):
@@ -51,15 +48,15 @@ class IngestData:
                               sparse_grm: dict, sparse_grm_sample: dict) -> None:
         # Now grab all genetic data that I have in the folder /project_resources/genetics/
         os.mkdir("genetics/")  # This is for legacy reasons to make sure all tests work...
-        dxpy.download_dxfile(dxpy.DXFile(bed_file).get_id(), 'genetics/UKBB_450K_Autosomes_QCd.bed')
-        dxpy.download_dxfile(dxpy.DXFile(bim_file).get_id(), 'genetics/UKBB_450K_Autosomes_QCd.bim')
-        dxpy.download_dxfile(dxpy.DXFile(fam_file).get_id(), 'genetics/UKBB_450K_Autosomes_QCd.fam')
-        dxpy.download_dxfile(dxpy.DXFile(low_MAC_list).get_id(), 'genetics/UKBB_450K_Autosomes_QCd.low_MAC.snplist')
+        dxpy.download_dxfile(dxpy.DXFile(bed_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.bed')
+        dxpy.download_dxfile(dxpy.DXFile(bim_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.bim')
+        dxpy.download_dxfile(dxpy.DXFile(fam_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.fam')
+        dxpy.download_dxfile(dxpy.DXFile(low_MAC_list).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.low_MAC.snplist')
         # This is the sparse matrix
         dxpy.download_dxfile(dxpy.DXFile(sparse_grm).get_id(),
-                             'genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx')
+                             'genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx')
         dxpy.download_dxfile(dxpy.DXFile(sparse_grm_sample).get_id(),
-                             'genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt')
+                             'genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt')
 
     def _ingest_phenofile(self, phenofile: list) -> None:
 
@@ -136,9 +133,9 @@ class IngestData:
         bgen_index_csv = csv.DictReader(open("bgen_locs.tsv", "r"), delimiter="\t")
         for line in bgen_index_csv:
             self.bgen_dict[line['chrom']] = {'index': line['bgen_index_dxid'],
-                                        'sample': line['sample_dxid'],
-                                        'bgen': line['bgen_dxid'],
-                                        'vep': line['vep_dxid']}
+                                             'sample': line['sample_dxid'],
+                                             'bgen': line['bgen_dxid'],
+                                             'vep': line['vep_dxid']}
 
     # Get inclusion/exclusion sample lists
     def _define_exclusion_lists(self, inclusion_list, exclusion_list) -> None:

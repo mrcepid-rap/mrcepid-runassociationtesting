@@ -88,7 +88,7 @@ class CovariateProcessor:
 
         # Get individuals with genetic data
         # Remember! the genetic data has already been filtered to individuals with WES data.
-        genetics_fam_file = open('genetics/UKBB_450K_Autosomes_QCd.fam', 'r')
+        genetics_fam_file = open('genetics/UKBB_470K_Autosomes_QCd.fam', 'r')
         for line in genetics_fam_file:
             line = line.rstrip()
             fields = line.split()
@@ -330,13 +330,13 @@ class CovariateProcessor:
 
         # Generate a plink file to use that only has included individuals:
         cmd = "plink2 " \
-              "--bfile /test/genetics/UKBB_450K_Autosomes_QCd --make-bed --keep-fam /test/SAMPLES_Include.txt " \
-              "--out /test/genetics/UKBB_450K_Autosomes_QCd_WBA"
+              "--bfile /test/genetics/UKBB_470K_Autosomes_QCd --make-bed --keep-fam /test/SAMPLES_Include.txt " \
+              "--out /test/genetics/UKBB_470K_Autosomes_QCd_WBA"
         run_cmd(cmd, True)
 
         # I have to do this to recover the sample information from plink
         cmd = "docker run -v /home/dnanexus/:/test/ egardner413/mrcepid-associationtesting plink2 " \
-              "--bfile /test/genetics/UKBB_450K_Autosomes_QCd_WBA " \
+              "--bfile /test/genetics/UKBB_470K_Autosomes_QCd_WBA " \
               "--validate | grep samples"
         proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
