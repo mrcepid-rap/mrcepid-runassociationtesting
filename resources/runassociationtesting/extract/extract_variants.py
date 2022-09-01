@@ -1,7 +1,7 @@
 import pandas.core.series
 
-from ..tool_runners.glm_runner import GLMRunner
-from ..tool_runners.staar_runner import STAARRunner
+from ..burden.glm_runner import GLMRunner
+from ..burden.staar_runner import STAARRunner
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
 

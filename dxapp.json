@@ -7,124 +7,6 @@
   "openSource": true,
   "inputSpec": [
     {
-      "name": "association_tarballs",
-      "label": "list of tarballs/single tarball from 'mergecollapsevariants'",
-      "class": "file",
-      "optional": false,
-      "patterns": [
-        "*.tar.gz"
-      ],
-      "help": "Path or hash to list file / single tarball of masks from 'mergecollapsevariants'"
-    },
-    {
-      "name": "tool",
-      "label": "Select the burden test tool to run (bolt, staar, saige, glm, regenie). Required if using 'burden' mode.",
-      "class": "string",
-      "optional": true,
-      "default": null,
-      "choices": ["bolt", "saige", "staar", "glm", "regenie"],
-      "help": "Select the burden test tool to run (bolt, staar, saige, glm, regenie). Required if using 'burden' mode. Case *MUST* match."
-    },
-    {
-      "name": "mode",
-      "label": "Run mode for this tool (burden, extract, phewas). See README for more details.",
-      "class": "string",
-      "optional": false,
-      "choices": ["burden","extract","phewas"],
-      "help": "Select the type of analysis you want to perform (burden, extract). Please see the README for more details on required inputs. Case *must* match."
-    },
-    {
-      "name": "gene_ids",
-      "label": "Gene or comma-separated list of genes to extract variants/genotypes for.",
-      "class": "string",
-      "optional": true,
-      "default": null,
-      "help": "A valid ENST Gene ID OR Gene Symbol, or comma-separated list of Symbols/IDs (MUST BE IN transcripts.tsv [project-G6BJF50JJv8p4PjGB9yy7YQ2:file-G7xyzF8JJv8kyV7q5z8VV3Vb]) to extract carriers and phenotype/covariate information for."
-    },
-    {
-      "name": "phenofile",
-      "label": "file with phenotype for association testing",
-      "class": "array:file",
-      "optional": false,
-      "patterns": [
-        "*.pheno"
-      ],
-      "help": "Path/hash to phenotype file(s)."
-    },
-    {
-      "name": "phenoname",
-      "label": "Single phenotype name to run association tests for.",
-      "class": "string",
-      "optional": true,
-      "default": null,
-      "help": "A single phenotype name to run association tests for. This MUST EXACTLY match the header of the provided phenofile to function properly. Only required if providing a pheno file with multiple phenotype columns (other than IID/FID)."
-    },
-    {
-      "name": "covarfile",
-      "label": "file with additional covariates for association testing",
-      "class": "file",
-      "optional": true,
-      "default": null,
-      "patterns": [
-        "*.covariates"
-      ],
-      "help": "Path/hash to additional covariates file."
-    },
-    {
-      "name": "categorical_covariates",
-      "label": "Comma-delimited list of categorical covariates in covarfile (if any)",
-      "class": "string",
-      "optional": true,
-      "default": null,
-      "help": "A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. WES batch) in <covarfile>. Names MUST match column header. PLEASE NOTE that any covariates named with this option WILL BE IGNORED by SAIGE."
-    },
-    {
-      "name": "quantitative_covariates",
-      "label": "Comma-delimited list of quantitative covariates in covarfile (if any)",
-      "class": "string",
-      "optional": true,
-      "default": null,
-      "help": "A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) in <covarfile>. Names MUST match column header."
-    },
-    {
-      "name": "is_binary",
-      "label": "Is the phenotype binary?",
-      "class": "boolean",
-      "optional": false,
-      "help": "Is the phenotype binary (true/false)?"
-    },
-    {
-      "name": "sex",
-      "label": "Run only one sex or both sexes (0 = female, 1 = male, 2 = both) [2]?",
-      "class": "int",
-      "optional": true,
-      "default": 2,
-      "choices": [0,1,2],
-      "help": "Run only one sex or both sexes (0 = female, 1 = male, 2 = both) [2]?"
-    },
-    {
-      "name": "exclusion_list",
-      "label": "File of individual IDs to exclude from regression analyses.",
-      "class": "file",
-      "optional": true,
-      "default": null,
-      "patterns": [
-        "*.txt"
-      ],
-      "help": "File of individual IDs to exclude from analyses. Do not use the command to exclude individuals by sex!"
-    },
-    {
-      "name": "inclusion_list",
-      "label": "File of individual IDs to include in regression analyses.",
-      "class": "file",
-      "optional": true,
-      "default": null,
-      "patterns": [
-        "*.txt"
-      ],
-      "help": "File of individual IDs to include in regression analyses."
-    },
-    {
       "name": "output_prefix",
       "label": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'",
       "class": "string",
@@ -133,129 +15,22 @@
       "help": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'"
     },
     {
-      "name": "run_marker_tests",
-      "label": "Run per-marker tests for requested tool(s) [true]?",
-      "class": "boolean",
-      "optional": true,
-      "default": true,
-      "help": "Run per-marker tests for requested tool(s) [true]? Setting to false could DRASTICALLY reduce run-time (particularly if -itool=saige). Only changes output for burden tests where tool = saige,regenie, or bolt."
+      "name": "input_yaml",
+      "label": "Input YAML of options for this execution.",
+      "class": "file",
+      "optional": false,
+      "patterns": [
+        "*.yml"
+      ],
+      "help": "YAML file containing inputs and options for the selected 'mode'"
     },
     {
-      "name": "bgen_index",
-      "label": "list of bgen files to collapse on",
-      "class": "file",
-      "optional": true,
-      "help": "list of bgen files and associated index/annotation",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G86GJ3jJJv8fbXVB9PQ2pjz6"
-        }
-      }
-    },
-    {
-      "name": "transcript_index",
-      "label": "transcripts for annotation of association stats",
-      "class": "file",
-      "optional": true,
-      "help": "transcripts for annotation of association stats",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G7xyzF8JJv8kyV7q5z8VV3Vb"
-        }
-      }
-    },
-    {
-      "name": "base_covariates",
-      "label": "standard covariates to include in model",
-      "class": "file",
-      "optional": true,
-      "help": "a file of standard covariates to include in the model. This file follows a very specific format and should not be changed unless absolutely necessary",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-G8ZvZFQJJv8qZQ9P12KVjYjy"
-        }
-      }
-    },
-    {
-      "name": "bed_file",
-      "label": "genotype bed file",
-      "class": "file",
-      "optional": true,
-      "help": "A plink .bed file of genetic data. This file should have been created by mrcepid-buildgrms",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYX88J57yK9fjf5qZ0kK61"
-        }
-      }
-    },
-    {
-      "name": "fam_file",
-      "label": "genotype fam file",
-      "class": "file",
-      "optional": true,
-      "help": "A plink .fam file corresponding to 'bed_file'. This file should have been created by mrcepid-buildgrms",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYYK0J57y8f2qZ2yfz09f5"
-        }
-      }
-    },
-    {
-      "name": "bim_file",
-      "label": "genotype bim file",
-      "class": "file",
-      "optional": true,
-      "help": "A plink .bim file corresponding to 'bed_file'. This file should have been created by mrcepid-buildgrms",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYYKQJ57yF1zKk15bZ3Yjb"
-        }
-      }
-    },
-    {
-      "name": "low_MAC_list",
-      "label": "List of low MAC markers in 'bed_file.",
-      "class": "file",
-      "optional": true,
-      "help": "List of low MAC (max-mac 100) markers in 'bed_file'. This file should have been created by mrcepid-buildgrms",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYYVjJ57y17ZyY2y65gFFk"
-        }
-      }
-    },
-    {
-      "name": "sparse_grm",
-      "label": "Sparse GRM generated by SAIGE step0",
-      "class": "file",
-      "optional": true,
-      "help": "A sparse GRM generated by SAIGE step0",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYYQjJ57yJ203GKx5KYxJ6"
-        }
-      }
-    },
-    {
-      "name": "sparse_grm_sample",
-      "label": "Sparse GRM sample file with row/column names for 'sparse_grm'",
-      "class": "file",
-      "optional": true,
-      "help": "Sparse GRM sample file with row/column names for 'sparse_grm'",
-      "default": {
-        "$dnanexus_link": {
-          "project": "project-G6BJF50JJv8p4PjGB9yy7YQ2",
-          "id": "file-GBVYYV8J57yGZ20kKyFjqQ6P"
-        }
-      }
+      "name": "mode",
+      "label": "Run mode for this tool (burden, extract, phewas). See README for more details.",
+      "class": "string",
+      "optional": false,
+      "choices": ["burden","extract","phewas"],
+      "help": "Select the type of analysis you want to perform (burden, extract). Please see the README for more details on required inputs. Case *must* match."
     }
   ],
   "outputSpec": [
@@ -285,6 +60,8 @@
       {"name": "pandas",
         "package_manager": "pip"},
       {"name": "statsmodels",
+      "package_manager":  "pip"},
+      {"name": "PyYAML",
       "package_manager":  "pip"}
     ]
   },

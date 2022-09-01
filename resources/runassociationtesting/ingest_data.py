@@ -1,18 +1,20 @@
+from abc import ABC, abstractmethod
+
 import tarfile
 from os.path import exists
-
 
 from association_resources import *
 
 
 # This class is slightly different that in other applets I have designed; it handles ALL inputs rather
-# than just external dependencies
-class IngestData:
+# than just external dependencies.
+# Note that it is an abstract class (ABC) so that different modules can access the methods within this class, but
+# add additional imports as required.
+class IngestData(ABC):
 
-    def __init__(self, association_tarballs: dict, phenofile: list, covarfile: dict, inclusion_list: dict,
-                 exclusion_list: dict, bgen_index: dict, transcript_index: dict, base_covariates: dict,
-                 bed_file: dict, fam_file: dict, bim_file: dict, low_MAC_list: dict,
-                 sparse_grm: dict, sparse_grm_sample: dict):
+    def __init__(self, parsed_options: dict, required_options: set):
+
+        self._parsed_options = parsed_options
 
         # Set reasonable defaults
         self.additional_covariates_found = False
@@ -22,15 +24,33 @@ class IngestData:
         self.tarball_prefixes = []
         self.bgen_dict = {}
 
+        self.default_options = {'transcript_index', 'bed_file', 'fam_file', 'bim_file', 'low_MAC_list', 'sparse_grm',
+                                'sparse_grm_sample', 'phenofile', 'base_covariates', 'covarfile',
+                                'association_tarballs', 'bgen_index', 'inclusion_list', 'exclusion_list'}
+
+        self._check_required_options(required_options)
+
         # Work our way through all the resources we need
         self._ingest_docker_file()
-        self._ingest_transcript_index(transcript_index)
-        self._ingest_genetic_data(bed_file, fam_file, bim_file, low_MAC_list, sparse_grm, sparse_grm_sample)
-        self._ingest_phenofile(phenofile)
-        self._ingest_covariates(base_covariates, covarfile)
-        self._ingest_tarballs(association_tarballs)
-        self._ingest_bgen(bgen_index)
-        self._define_exclusion_lists(inclusion_list, exclusion_list)
+        self._ingest_transcript_index(parsed_options['transcript_index'])
+        self._ingest_genetic_data(parsed_options['bed_file'],
+                                  parsed_options['fam_file'],
+                                  parsed_options['bim_file'],
+                                  parsed_options['low_MAC_list'],
+                                  parsed_options['sparse_grm'],
+                                  parsed_options['sparse_grm_sample'])
+        self._ingest_phenofile(parsed_options['phenofile'])
+        self._ingest_covariates(parsed_options['base_covariates'], parsed_options['covarfile'])
+        self._ingest_tarballs(parsed_options['association_tarballs'])
+        self._ingest_bgen(parsed_options['bgen_index'])
+        self._define_exclusion_lists(parsed_options['inclusion_list'],
+                                     parsed_options['exclusion_list'])
+
+    def _check_required_options(self, required_options: set):
+
+        for option in required_options:
+            if option not in self._parsed_options:
+                raise dxpy.AppError(f'Option {option} not found in input_yaml. Please re-run with this option!')
 
     # Bring our docker image into our environment so that we can run commands we need:
     @staticmethod
