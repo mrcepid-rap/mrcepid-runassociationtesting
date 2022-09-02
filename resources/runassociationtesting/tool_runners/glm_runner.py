@@ -4,7 +4,6 @@ import statsmodels.api as sm
 import numpy as np
 
 from os.path import exists
-from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
 

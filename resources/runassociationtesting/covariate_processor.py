@@ -1,9 +1,7 @@
-import os
-import csv
-
 from association_resources import *
 from ingest_data import IngestData
 from association_pack import AssociationPack
+
 
 class CovariateProcessor:
 

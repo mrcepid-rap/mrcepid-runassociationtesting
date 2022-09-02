@@ -1,10 +1,4 @@
-import os
-import csv
-import gzip
-import pandas as pd
-
 from os.path import exists
-from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import ThreadUtility
 

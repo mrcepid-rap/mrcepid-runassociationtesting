@@ -84,7 +84,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
-* v.1.2.4
+* v1.2.5
+  * Minor internal changes to clean up various imports 
+
+* v1.2.4
   * Made filename updates to the codebase to reflect release of the 470k dataset
   * Code which loads VEP annotations was identical in multiple locations. Switched to a single function in association_resources.py
 

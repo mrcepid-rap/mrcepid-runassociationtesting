@@ -1,12 +1,8 @@
-import csv
-import glob
-import sys
-
 from os.path import exists
 
-from ..association_pack import AssociationPack
 from ..association_resources import *
 from ..thread_utility import *
+
 
 class REGENIERunner:
 
@@ -27,7 +23,7 @@ class REGENIERunner:
             # This makes use of a utility class from AssociationResources since bgen filtering/processing is
             # IDENTICAL to that done for BOLT. Do not want to duplicate code!
             thread_utility.launch_job(class_type=process_bgen_file,
-                                      chrom_bgen_index=self._association_pack.bgen_dict[chromosome], # This holds the information for downloading the bgen file
+                                      chrom_bgen_index=self._association_pack.bgen_dict[chromosome],  # This holds the information for downloading the bgen file
                                       chromosome=chromosome)
         thread_utility.collect_futures()
 
@@ -83,7 +79,6 @@ class REGENIERunner:
                 thread_utility.launch_job(class_type=self._regenie_marker_run,
                                           chromosome=chromosome)
                 completed_marker_chromosomes.append(chromosome)
-            thread_utility.collect_futures()
 
             future_results = thread_utility.collect_futures()
             markers_log_file = open(self._association_pack.output_prefix + '.REGENIE_markers.log', 'w')
@@ -167,7 +162,8 @@ class REGENIERunner:
             max_mac = (n_samples * 2) - 100
             cmd = 'plink2 --bfile /test/genetics/UKBB_470K_Autosomes_QCd_WBA ' \
                   '--mac 100 ' \
-                  '--max-mac ' + str(max_mac) + \
+                  '--max-mac ' + str(max_mac) + ' ' \
+                  '--hwe 1e-15 ' \
                   ' --write-snplist ' \
                   '--out /test/REGENIE_extract'
             run_cmd(cmd, True)
