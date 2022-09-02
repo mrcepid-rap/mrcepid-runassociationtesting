@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod
-
 import tarfile
 from os.path import exists
 
+from abc import ABC
 from association_resources import *
 
 

@@ -1,18 +1,16 @@
-import os
-import csv
-
+from abc import ABC, abstractmethod
 from association_resources import *
 from ingest_data import IngestData
 from association_pack import AssociationPack
 
-class CovariateProcessor:
 
-    def __init__(self, ingested_data: IngestData, phenoname: str, categorical_covariates: str, quantitative_covariates: str,
-                 gene_ids: str, sex: int, is_binary: bool, run_marker_tests: bool, output_prefix: str, mode: str):
+class CovariateProcessor(ABC):
+
+    def __init__(self, ingested_data: IngestData, parsed_options: dict):
 
         # De-identify specific variables
         self._ingested_data = ingested_data
-        self._sex = sex
+        self._sex = pared_options['sex']
         self._mode = mode
 
         self._get_num_threads()

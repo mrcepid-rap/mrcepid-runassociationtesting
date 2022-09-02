@@ -1,1 +1,1 @@
-from load_module import *
+from burden_loader import *
