@@ -1,4 +1,5 @@
 from runassociationtesting.association_resources import *
+from runassociationtesting.linear_model.linear_model import LinearModelResult
 from runassociationtesting.linear_model.proccess_model_output import process_linear_model_outputs
 from runassociationtesting.burden.tool_runners.tool_runner import ToolRunner
 from runassociationtesting.linear_model import linear_model
@@ -59,13 +60,14 @@ class GLMRunner(ToolRunner):
         lm_stats_file = open(self._output_prefix + '.lm_stats.tmp', 'w')
         lm_stats_writer = csv.DictWriter(lm_stats_file,
                                          delimiter="\t",
-                                         fieldnames=fieldnames)
+                                         fieldnames=fieldnames,
+                                         extrasaction='ignore')
 
         lm_stats_writer.writeheader()
         future_results = thread_utility.collect_futures()
         for result in future_results:
-            finished_gene = result
-            lm_stats_writer.writerow(finished_gene)
+            finished_gene: LinearModelResult = result
+            lm_stats_writer.writerow(finished_gene.todict())
         lm_stats_file.close()
 
         # 5. Annotate unformatted results and print final outputs

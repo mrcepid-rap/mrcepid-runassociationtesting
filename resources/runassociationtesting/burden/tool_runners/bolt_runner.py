@@ -124,7 +124,7 @@ class BOLTRunner(ToolRunner):
         transcripts_table = build_transcript_table()
 
         # Test what columns we have in the 'SNP' field so we can name them...
-        field_names = self._define_field_names_from_pandas(bolt_table.iloc[0])
+        field_names = self._define_field_names_from_pandas(bolt_table_gene.iloc[0])
         bolt_table_gene[field_names] = bolt_table_gene['SNP'].str.split("-", expand=True)
         bolt_table_gene = bolt_table_gene.drop(columns=['SNP', 'CHR', 'BP', 'ALLELE1', 'ALLELE0', 'GENPOS'])
 

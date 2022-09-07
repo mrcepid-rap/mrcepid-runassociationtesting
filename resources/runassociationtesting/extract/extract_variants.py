@@ -1,9 +1,9 @@
 import pandas.core.series
 
-from ..burden.glm_runner import GLMRunner
-from ..burden.staar_runner import STAARRunner
-from ..association_resources import *
-from ..thread_utility import ThreadUtility
+from runassociationtesting.association_pack import AssociationPack
+from runassociationtesting.association_resources import *
+from runassociationtesting.linear_model.proccess_model_output import merge_glm_staar_runs
+from runassociationtesting.thread_utility import ThreadUtility
 
 
 class ExtractVariants:
@@ -18,7 +18,9 @@ class ExtractVariants:
         # If we are doing extraction based on individual SNPs or a Gene list, we need to make a 'fake' gene info
         # but find all chromosomes those SNPS/Genes lie on
         if self._association_pack.is_non_standard_tar:
-            gene_info, returned_chromosomes = process_snp_or_gene_tar(self._association_pack.is_snp_tar, self._association_pack.is_gene_tar, self._association_pack.tarball_prefixes[0])
+            gene_info, returned_chromosomes = process_snp_or_gene_tar(self._association_pack.is_snp_tar,
+                                                                      self._association_pack.is_gene_tar,
+                                                                      self._association_pack.tarball_prefixes[0])
             gene_infos.append(gene_info)
             chromosomes = returned_chromosomes
         else:
@@ -30,7 +32,10 @@ class ExtractVariants:
 
         # 2. Download variant VEP annotations
         print("Loading VEP annotations...")
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=5,thread_factor=4)
+        thread_utility = ThreadUtility(self._association_pack.threads,
+                                       error_message='An extraction thread failed',
+                                       incrementor=5,
+                                       thread_factor=4)
         for chromosome in chromosomes:
             thread_utility.launch_job(self._download_vep,
                                       chromosome = chromosome)
@@ -38,7 +43,10 @@ class ExtractVariants:
 
         # 3. Filter relevant files to individuals we want to keep
         print("Filtering variant files to appropriate individuals...")
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=4)
+        thread_utility = ThreadUtility(self._association_pack.threads,
+                                       error_message='An extraction thread failed',
+                                       incrementor=20,
+                                       thread_factor=4)
 
         # if, elif, else simply depends on which type of tarball we are using
         if self._association_pack.is_snp_tar:
@@ -61,7 +69,10 @@ class ExtractVariants:
 
         # 4. Actually collect variant information per-gene
         print("Extracting variant information...")
-        thread_utility = ThreadUtility(self._association_pack.threads,error_message='An extraction thread failed',incrementor=20,thread_factor=2)
+        thread_utility = ThreadUtility(self._association_pack.threads,
+                                       error_message='An extraction thread failed',
+                                       incrementor=20,
+                                       thread_factor=2)
         for gene_info in gene_infos:
 
             for tarball_prefix in self._association_pack.tarball_prefixes:
