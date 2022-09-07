@@ -1,18 +1,13 @@
-import csv
-import glob
-import sys
-
 from os.path import exists
 
-from ..association_pack import AssociationPack
-from ..association_resources import *
-from ..thread_utility import *
+from runassociationtesting.association_resources import *
+from runassociationtesting.burden.tool_runners.tool_runner import ToolRunner
+from runassociationtesting.thread_utility import *
 
-class REGENIERunner:
 
-    def __init__(self, association_pack: AssociationPack):
+class REGENIERunner(ToolRunner):
 
-        self._association_pack = association_pack
+    def run_tool(self) -> None:
 
         # 1. Run step 1 of regenie
         print("Running REGENIE step 1")
@@ -20,14 +15,16 @@ class REGENIERunner:
 
         # 2. Prep bgen files for a run:
         print("Downloading and filtering raw bgen files")
-        thread_utility = ThreadUtility(self._association_pack.threads, error_message='A REGENIE bgen thread failed',
+        thread_utility = ThreadUtility(self._association_pack.threads,
+                                       error_message='A REGENIE bgen thread failed',
                                        incrementor=10,
                                        thread_factor=4)
+
         for chromosome in get_chromosomes():
             # This makes use of a utility class from AssociationResources since bgen filtering/processing is
             # IDENTICAL to that done for BOLT. Do not want to duplicate code!
             thread_utility.launch_job(class_type=process_bgen_file,
-                                      chrom_bgen_index=self._association_pack.bgen_dict[chromosome], # This holds the information for downloading the bgen file
+                                      chrom_bgen_index=self._association_pack.bgen_dict[chromosome],
                                       chromosome=chromosome)
         thread_utility.collect_futures()
 
@@ -46,20 +43,22 @@ class REGENIERunner:
 
         # 4. Run step 2 of regenie
         print("Running REGENIE step 2")
-        thread_utility = ThreadUtility(self._association_pack.threads, error_message='A REGENIE step 2 thread failed', incrementor=10,
+        thread_utility = ThreadUtility(self._association_pack.threads,
+                                       error_message='A REGENIE step 2 thread failed',
+                                       incrementor=10,
                                        thread_factor=1)
         for chromosome in get_chromosomes():
             for tarball_prefix in self._association_pack.tarball_prefixes:
                 if exists(tarball_prefix + "." + chromosome + ".REGENIE.annotationFile.tsv"):
                     thread_utility.launch_job(self._run_regenie_step_two,
                                               tarball_prefix=tarball_prefix,
-                                              chromosome = chromosome)
+                                              chromosome=chromosome)
         future_results = thread_utility.collect_futures()
 
         # Gather preliminary results from step 2:
         print("Gathering REGENIE mask-based results...")
         completed_gene_tables = []
-        log_file = open(self._association_pack.output_prefix + '.REGENIE_step2.log', 'w')
+        log_file = open(self._output_prefix + '.REGENIE_step2.log', 'w')
         for result in future_results:
             tarball_prefix, finished_chromosome = result
             completed_gene_tables.append(self._process_regenie_output(tarball_prefix,
@@ -86,7 +85,7 @@ class REGENIERunner:
             thread_utility.collect_futures()
 
             future_results = thread_utility.collect_futures()
-            markers_log_file = open(self._association_pack.output_prefix + '.REGENIE_markers.log', 'w')
+            markers_log_file = open(self._output_prefix + '.REGENIE_markers.log', 'w')
             for result in future_results:
                 finished_chromosome = result
                 markers_log_file.write(
@@ -99,7 +98,7 @@ class REGENIERunner:
 
         # 6. Process outputs
         print("Processing REGENIE outputs...")
-        self.outputs = self._annotate_regenie_output(completed_gene_tables, completed_marker_chromosomes)
+        self._outputs.extend(self._annotate_regenie_output(completed_gene_tables, completed_marker_chromosomes))
 
     # We need three files per chromosome-mask combination:
     # 1. Annotation file, which lists variants with gene and mask name
@@ -113,15 +112,15 @@ class REGENIERunner:
         gene_dict = {}
 
         # 1. Annotation File
-        with open(tarball_prefix + "." + chromosome + ".REGENIE.annotationFile.tsv", 'w', newline='\n') as annotation_file:
+        with open(f'{tarball_prefix}.{chromosome}.REGENIE.annotationFile.tsv', 'w', newline='\n') as annotation_file:
             table_reader = csv.DictReader(open(tarball_prefix + "." + chromosome + ".variants_table.STAAR.tsv", 'r'),
                                           delimiter='\t')
             annotation_writer = csv.DictWriter(annotation_file,
                                                delimiter='\t',
                                                fieldnames=['varID', 'ENST', 'annotation'],
                                                extrasaction='ignore',
-                                               lineterminator='\n') # REGENIE is very fussy about line terminators.
-            last_var = None # Need to check for small number of duplicate variants...
+                                               lineterminator='\n')  # REGENIE is very fussy about line terminators.
+            last_var = None  # Need to check for small number of duplicate variants...
             for variant in table_reader:
                 if last_var != variant['varID']:
                     variant['annotation'] = tarball_prefix
@@ -153,21 +152,42 @@ class REGENIERunner:
             mask_file.write(tarball_prefix + '\t' + tarball_prefix + '\n')
             mask_file.close()
 
+    # Helper function to decide what covariates are included in the various REGENIE commands
+    def _define_covariate_string(self) -> str:
+
+        suffix = ''
+        if len(self._association_pack.found_quantitative_covariates) > 0:
+            quant_covars_join = ','.join(self._association_pack.found_quantitative_covariates)
+            suffix = suffix + '--covarColList PC{1:10},age,age_squared,sex,' + quant_covars_join + ' '
+        else:
+            suffix = suffix + '--covarColList PC{1:10},age,age_squared,sex '
+
+        if len(self._association_pack.found_categorical_covariates) > 0:
+            cat_covars_join = ','.join(self._association_pack.found_categorical_covariates)
+            suffix = suffix + '--catCovarList wes_batch,' + cat_covars_join + ' '
+        else:
+            suffix = suffix + '--catCovarList wes_batch '
+
+        if self._association_pack.is_binary:
+            suffix = suffix + '--bt'
+
+        return suffix
+
     def _run_regenie_step_one(self) -> None:
 
         # Need to define separate min/max MAC files for REGENIE as it defines them slightly differently from BOLT:
         # First we need the number of individuals that are being processed:
         with open('SAMPLES_Include.txt') as sample_file:
             n_samples = 0
-            for line in sample_file:
-                n_samples+=1
+            for _ in sample_file:
+                n_samples += 1
             sample_file.close()
 
             # And generate a SNP list for the --extract parameter of REGENIE
             max_mac = (n_samples * 2) - 100
             cmd = 'plink2 --bfile /test/genetics/UKBB_470K_Autosomes_QCd_WBA ' \
                   '--mac 100 ' \
-                  '--max-mac ' + str(max_mac) + \
+                  f'--max-mac {str(max_mac)}' + \
                   ' --write-snplist ' \
                   '--out /test/REGENIE_extract'
             run_cmd(cmd, True)
@@ -180,25 +200,11 @@ class REGENIERunner:
               '--phenoFile /test/phenotypes_covariates.formatted.txt ' \
               '--bsize 100 ' \
               '--out /test/fit_out ' \
-              '--threads ' + str(self._association_pack.threads) + ' ' \
-              '--phenoCol ' + self._association_pack.pheno_names[0] + ' '
+              f'--threads {str(self._association_pack.threads)} ' \
+              f'--phenoCol {self._association_pack.pheno_names[0]} '
 
-        if len(self._association_pack.found_quantitative_covariates) > 0:
-            quant_covars_join = ','.join(self._association_pack.found_quantitative_covariates)
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex,' + quant_covars_join + ' '
-        else:
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex '
-
-        if len(self._association_pack.found_categorical_covariates) > 0:
-            cat_covars_join = ','.join(self._association_pack.found_categorical_covariates)
-            cmd = cmd + '--catCovarList wes_batch,' + cat_covars_join + ' '
-        else:
-            cmd = cmd + '--catCovarList wes_batch '
-
-        if self._association_pack.is_binary:
-            cmd = cmd + '--bt'
-
-        run_cmd(cmd, True, stdout_file = self._association_pack.output_prefix + ".REGENIE_step1.log")
+        cmd += self._define_covariate_string()
+        run_cmd(cmd, True, stdout_file=self._output_prefix + ".REGENIE_step1.log")
 
     def _run_regenie_step_two(self, tarball_prefix: str, chromosome: str) -> tuple:
 
@@ -221,21 +227,7 @@ class REGENIERunner:
               '--minMAC 1 ' \
               '--out /test/' + tarball_prefix + '.' + chromosome + ' '
 
-        # REGENIE requires to re-input same covariates as step 1 for some reason...
-        if len(self._association_pack.found_quantitative_covariates) > 0:
-            quant_covars_join = ','.join(self._association_pack.found_quantitative_covariates)
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex,' + quant_covars_join + ' '
-        else:
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex '
-
-        if len(self._association_pack.found_categorical_covariates) > 0:
-            cat_covars_join = ','.join(self._association_pack.found_categorical_covariates)
-            cmd = cmd + '--catCovarList wes_batch,' + cat_covars_join + ' '
-        else:
-            cmd = cmd + '--catCovarList wes_batch '
-
-        if self._association_pack.is_binary:
-            cmd = cmd + '--bt --firth --approx'
+        cmd += self._define_covariate_string()
 
         run_cmd(cmd, True, chromosome + ".REGENIE_markers.log")
 
@@ -255,21 +247,7 @@ class REGENIERunner:
               '--threads 4 ' \
               '--out /test/' + chromosome + '.markers.REGENIE '
 
-        if len(self._association_pack.found_quantitative_covariates) > 0:
-            quant_covars_join = ','.join(self._association_pack.found_quantitative_covariates)
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex,' + quant_covars_join + ' '
-        else:
-            cmd = cmd + '--covarColList PC{1:10},age,age_squared,sex '
-
-        if len(self._association_pack.found_categorical_covariates) > 0:
-            cat_covars_join = ','.join(self._association_pack.found_categorical_covariates)
-            cmd = cmd + '--catCovarList wes_batch,' + cat_covars_join + ' '
-        else:
-            cmd = cmd + '--catCovarList wes_batch '
-
-        if self._association_pack.is_binary:
-            cmd = cmd + '--bt --firth --approx'
-
+        cmd += self._define_covariate_string()
         run_cmd(cmd, True, chromosome + ".REGENIE_markers.log")
 
         return chromosome
@@ -277,12 +255,12 @@ class REGENIERunner:
     def _process_regenie_output(self, tarball_prefix: str, chromosome: str) -> pd.DataFrame:
 
         # Load the raw table
-        regenie_table = pd.read_csv(tarball_prefix + "." + chromosome + "_" + self._association_pack.pheno_names[0] + ".regenie",
+        regenie_table = pd.read_csv(f'{tarball_prefix}.{chromosome}_{self._association_pack.pheno_names[0]}.regenie',
                                     sep=' ',
                                     comment='#')
 
         # And then should be able to split into 3 columns:
-        regenie_table[['ENST','MASK','SUBSET']] = regenie_table['ID'].str.split('.',expand=True)
+        regenie_table[['ENST', 'MASK', 'SUBSET']] = regenie_table['ID'].str.split('.', expand=True)
 
         # And only take the 'all' subset. Singleton is meaningless here
         regenie_table = regenie_table[regenie_table['SUBSET'] == 'all']
@@ -291,24 +269,14 @@ class REGENIERunner:
         regenie_table['PVALUE'] = 10 ** (-1 * regenie_table['LOG10P'])
 
         # And finally drop columns we won't care about:
-        regenie_table = regenie_table.drop(columns=['ID', 'CHROM', 'GENPOS', 'ALLELE0', 'ALLELE1', 'EXTRA', 'MASK', 'SUBSET', 'LOG10P'])
+        regenie_table = regenie_table.drop(columns=['ID', 'CHROM', 'GENPOS', 'ALLELE0', 'ALLELE1', 'EXTRA',
+                                                    'MASK', 'SUBSET', 'LOG10P'])
 
         # Get column names for Mask/MAF information if possible from the tarball name
-        tarball_prefix_split = tarball_prefix.split("-")
-        if len(tarball_prefix_split) == 2:  # This could be the standard naming format... check that column [1] is MAF/AC
-            if 'MAF' in tarball_prefix_split[1] or 'AC' in tarball_prefix_split[1]:
-                field_names = ['MASK', 'MAF']
-                regenie_table[field_names] = tarball_prefix_split
-            else:  # This means we didn't hit on MAF/AC in column [2] and a different naming convention is used...
-                field_names = ['var1', 'var2']
-                regenie_table[field_names] = tarball_prefix_split
-        else:
-            for i in range(1, len(tarball_prefix_split) + 1):
-                field_name = 'var%i' % i
-                regenie_table[field_name] = tarball_prefix_split[i - 1]
+        regenie_table = self._define_field_names_from_tarball_prefix(tarball_prefix, regenie_table)
 
         # Here we pull out all the various tests that were performed and make a separate table
-        p_val_table = regenie_table.pivot(index='ENST',columns='TEST', values = 'PVALUE')
+        p_val_table = regenie_table.pivot(index='ENST', columns='TEST', values='PVALUE')
         p_val_table = p_val_table.drop(columns=['ADD'])
 
         # And then merge them back into the original table with just the 'additive' p. value
@@ -332,7 +300,7 @@ class REGENIERunner:
 
         # Now merge the transcripts table into the gene table to add annotation and the write
         regenie_table = pd.merge(transcripts_table, regenie_table, left_index=True, right_index=True, how="left")
-        with open(self._association_pack.output_prefix + '.genes.REGENIE.stats.tsv', 'w') as gene_out:
+        with open(self._output_prefix + '.genes.REGENIE.stats.tsv', 'w') as gene_out:
 
             # Sort just in case
             regenie_table = regenie_table.sort_values(by=['chrom', 'start', 'end'])
@@ -341,15 +309,15 @@ class REGENIERunner:
             gene_out.close()
 
             # And bgzip and tabix...
-            cmd = "bgzip /test/" + self._association_pack.output_prefix + '.genes.REGENIE.stats.tsv'
+            cmd = f'bgzip /test/{self._output_prefix}.genes.REGENIE.stats.tsv'
             run_cmd(cmd, True)
-            cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + self._association_pack.output_prefix + '.genes.REGENIE.stats.tsv.gz'
+            cmd = f'tabix -S 1 -s 2 -b 3 -e 4 /test/{self._output_prefix}.genes.REGENIE.stats.tsv.gz'
             run_cmd(cmd, True)
 
-        outputs = [self._association_pack.output_prefix + '.REGENIE_step1.log',
-                   self._association_pack.output_prefix + '.REGENIE_step2.log',
-                   self._association_pack.output_prefix + '.genes.REGENIE.stats.tsv.gz',
-                   self._association_pack.output_prefix + '.genes.REGENIE.stats.tsv.gz.tbi']
+        outputs = [self._output_prefix + '.REGENIE_step1.log',
+                   self._output_prefix + '.REGENIE_step2.log',
+                   self._output_prefix + '.genes.REGENIE.stats.tsv.gz',
+                   self._output_prefix + '.genes.REGENIE.stats.tsv.gz.tbi']
 
         if self._association_pack.run_marker_tests:
 
@@ -361,7 +329,9 @@ class REGENIERunner:
                     pd.read_csv(gzip.open("filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz", 'rt'),
                                 sep="\t",
                                 dtype={'SIFT': str, 'POLYPHEN': str}))
-                regenie_table_marker.append(pd.read_csv(chromosome + ".markers.REGENIE_" + self._association_pack.pheno_names[0] + ".regenie", sep=' '))
+                regenie_table_marker.append(
+                    pd.read_csv(f'{chromosome}.markers.REGENIE_{self._association_pack.pheno_names[0]}.regenie',
+                                sep=' '))
 
             variant_index = pd.concat(variant_index)
             variant_index = variant_index.set_index('varID')
@@ -372,9 +342,10 @@ class REGENIERunner:
             regenie_table_marker = regenie_table_marker.rename(
                 columns={'ID': 'varID', 'A1FREQ': 'REGENIE_MAF'})
             regenie_table_marker['PVALUE'] = 10 ** (-1 * regenie_table_marker['LOG10P'])
-            regenie_table_marker = regenie_table_marker.drop(columns=['CHROM', 'GENPOS', 'ALLELE0', 'ALLELE1', 'INFO', 'EXTRA', 'TEST', 'LOG10P'])
+            regenie_table_marker = regenie_table_marker.drop(columns=['CHROM', 'GENPOS', 'ALLELE0', 'ALLELE1', 'INFO',
+                                                                      'EXTRA', 'TEST', 'LOG10P'])
             regenie_table_marker = pd.merge(variant_index, regenie_table_marker, on='varID', how="left")
-            with open(self._association_pack.output_prefix + '.markers.REGENIE.stats.tsv', 'w') as marker_out:
+            with open(self._output_prefix + '.markers.REGENIE.stats.tsv', 'w') as marker_out:
                 # Sort by chrom/pos just to be sure...
                 regenie_table_marker = regenie_table_marker.sort_values(by=['CHROM', 'POS'])
 
@@ -382,13 +353,13 @@ class REGENIERunner:
                 marker_out.close()
 
                 # And bgzip and tabix...
-                cmd = "bgzip /test/" + self._association_pack.output_prefix + '.markers.REGENIE.stats.tsv'
+                cmd = "bgzip /test/" + self._output_prefix + '.markers.REGENIE.stats.tsv'
                 run_cmd(cmd, True)
-                cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + self._association_pack.output_prefix + '.markers.REGENIE.stats.tsv.gz'
+                cmd = "tabix -S 1 -s 2 -b 3 -e 3 /test/" + self._output_prefix + '.markers.REGENIE.stats.tsv.gz'
                 run_cmd(cmd, True)
 
-            outputs.extend([self._association_pack.output_prefix + '.markers.REGENIE.stats.tsv.gz',
-                            self._association_pack.output_prefix + '.markers.REGENIE.stats.tsv.gz.tbi',
-                            self._association_pack.output_prefix + '.REGENIE_markers.log'])
+            outputs.extend([self._output_prefix + '.markers.REGENIE.stats.tsv.gz',
+                            self._output_prefix + '.markers.REGENIE.stats.tsv.gz.tbi',
+                            self._output_prefix + '.REGENIE_markers.log'])
 
         return outputs

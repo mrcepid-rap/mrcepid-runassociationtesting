@@ -16,6 +16,13 @@ class PheWAS:
 
         self._association_pack = association_pack
 
+        # for gene_info in self._gene_infos:
+        #     thread_utility.launch_job(self._linear_model_genes,
+        #                               linear_model_pack=returned_pack,
+        #                               genotype_table=genotype_packs[model],
+        #                               gene=gene_info.name,
+        #                               mask_name=model)
+
         # 1. Figure out genes/SNPlist to run...
         gene_infos = []
         if self._association_pack.is_non_standard_tar:

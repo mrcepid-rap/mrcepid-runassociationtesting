@@ -6,61 +6,36 @@
 #
 # DNAnexus Python Bindings (dxpy) documentation:
 #   http://autodoc.dnanexus.com/bindings/python/current/
-import dxpy
-import sys
 import tarfile
-import importlib
-from importlib import util
+import sys
 
 # Update system search paths to look for modules appropriately
 # We have to do this to get modules to run properly on DNANexus while still enabling easy editing in PyCharm
 sys.path.append('/')
 sys.path.append('/runassociationtesting/')
 
-from runassociationtesting import module_loader
-
-
-class CustomImport:
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def conditional_import(mode: str, package: str, output_prefix: str, input_yaml: dict) -> module_loader.ModuleLoader:
-        # Add the custom path for DNANexus modules to the PYTHON_PATH variable so we can actually search for it
-        sys.path.append(f'/runassociationtesting/{mode}/')
-
-        # Return a reference to the module itself
-        loader = util.find_spec(package)
-        if loader is not None:
-            return importlib.import_module(package).LoadModule(output_prefix, input_yaml)
-        else:
-            raise ModuleNotFoundError
+from runassociationtesting.module_loader import *
 
 
 @dxpy.entry_point('main')
-def main(mode, output_prefix, input_yaml):
+def main(mode: str, output_prefix: str, input_args: str):
 
     # Define the package to search for based on the 'mode' requested
-    importer = CustomImport()
-    loaded_module = importer.conditional_import(mode, f'runassociationtesting.{mode}',
-                                                output_prefix, input_yaml)
+    module_loader = conditional_import(mode, f'runassociationtesting.{mode}.loader')
 
     # All packages MUST have a 'start_module' class by definition
+    loaded_module = module_loader(output_prefix, input_args)
     loaded_module.start_module()
 
     # Create tar of all possible output files
-    if output_prefix is None:
-        output_tarball = "assoc_results.tar.gz"
-    else:
-        output_tarball = output_prefix + ".assoc_results.tar.gz"
+    output_tarball = output_prefix + ".assoc_results.tar.gz"
 
     tar = tarfile.open(output_tarball, "w:gz")
     for file in loaded_module.get_outputs():
         tar.add(file)
     tar.close()
 
-    ## Have to do 'upload_local_file' to make sure the new file is registered with dna nexus
+    # Have to do 'upload_local_file' to make sure the new file is registered with dna nexus
     output = {"output_tarball": dxpy.dxlink(dxpy.upload_local_file(output_tarball))}
 
     return output

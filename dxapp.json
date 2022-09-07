@@ -3,34 +3,29 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "openSource": true,
   "inputSpec": [
     {
       "name": "output_prefix",
-      "label": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'",
+      "label": "Prefix to use for naming output tar file of association statistics.",
       "class": "string",
-      "optional": true,
-      "default": null,
-      "help": "Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'"
-    },
-    {
-      "name": "input_yaml",
-      "label": "Input YAML of options for this execution.",
-      "class": "file",
       "optional": false,
-      "patterns": [
-        "*.yml"
-      ],
-      "help": "YAML file containing inputs and options for the selected 'mode'"
+      "help": "Prefix to use for naming output tar file of association statistics."
     },
     {
       "name": "mode",
-      "label": "Run mode for this tool (burden, extract, phewas). See README for more details.",
+      "label": "Run mode for this tool. See README for more details.",
       "class": "string",
       "optional": false,
-      "choices": ["burden","extract","phewas"],
-      "help": "Select the type of analysis you want to perform (burden, extract). Please see the README for more details on required inputs. Case *must* match."
+      "help": "Select the type of analysis you want to perform. Please see the README for more details on required inputs. Case *must* match."
+    },
+    {
+      "name": "input_args",
+      "label": "Input arguments for requested mode. See README for more details.",
+      "class": "string",
+      "optional": false,
+      "help": "Input arguments for requested mode. Please see the README for more details on required inputs. Supply --help to this argument to get a list of possible options."
     }
   ],
   "outputSpec": [
