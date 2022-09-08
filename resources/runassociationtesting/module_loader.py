@@ -22,6 +22,14 @@ class ModuleLoader(ABC):
         self._parser = argparse.ArgumentParser()
         self._load_general_options()
 
+        # Set all possible required options as a union of top-level options required by all tools and options specific
+        # to this ('burden') tool. And then generate a union of these actual options to load
+        self._load_module_options()
+        self.parsed_options = self._parse_options()
+
+        # Download required files and process covariates
+        self.association_pack = self._ingest_data(self.parsed_options)
+
     def get_outputs(self) -> List[str]:
         return self._outputs
 
@@ -116,9 +124,7 @@ class ModuleLoader(ABC):
 # This method takes a possible 'mode' and tries to import it into the current projects namespace.
 # This is to enable 'modules' that are not part of the standard distribution to be run without being part of the
 # project at runtime
-def conditional_import(mode: str, package: str) -> Type[ModuleLoader]:
-    # Add the custom path for DNANexus modules to the PYTHON_PATH variable, so we can actually search for it
-    sys.path.append(f'/runassociationtesting/{mode}/')
+def conditional_import(package: str) -> Type[ModuleLoader]:
 
     # Return a reference to the module itself
     loader = util.find_spec(package)

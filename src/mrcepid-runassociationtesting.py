@@ -21,7 +21,7 @@ from runassociationtesting.module_loader import *
 def main(mode: str, output_prefix: str, input_args: str):
 
     # Define the package to search for based on the 'mode' requested
-    module_loader = conditional_import(mode, f'runassociationtesting.{mode}.loader')
+    module_loader = conditional_import(f'{mode}.loader')
 
     # All packages MUST have a 'start_module' class by definition
     loaded_module = module_loader(output_prefix, input_args)
