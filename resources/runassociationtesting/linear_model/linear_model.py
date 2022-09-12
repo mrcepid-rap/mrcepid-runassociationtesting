@@ -33,8 +33,10 @@ class LinearModelPack:
 
 class LinearModelResult:
 
-    def __init__(self, p_val_init: float, n_car: int, cMAC: int, n_model: int, ENST: str, maskname: str,
-                 pheno_name: str, p_val_full: float, effect: float, std_err: float):
+    def __init__(self, n_car: int, cMAC: int, n_model: int, ENST: str, maskname: str,
+                 pheno_name: str,
+                 p_val_init: float = float('nan'), p_val_full: float = float('nan'),
+                 effect: float = float('nan'), std_err: float = float('nan')):
 
         self.p_val_init = p_val_init
         self.n_car = n_car
@@ -179,22 +181,6 @@ def add_individuals_with_variant(model_frame: pd.DataFrame, indv_w_var: pd.DataF
     return internal_frame
 
 
-def get_null_result(n_car: int, cMAC: int, n_indvs: int, gene_name: str, mask_name: str,
-                    pheno_name: str) -> LinearModelResult:
-    result = LinearModelResult(p_val_init=float('nan'),
-                               n_car=n_car,
-                               cMAC=cMAC,
-                               n_model=n_indvs,
-                               ENST=gene_name,
-                               maskname=mask_name,
-                               pheno_name=pheno_name,
-                               p_val_full=float('nan'),
-                               effect=float('nan'),
-                               std_err=float('nan'))
-
-    return result
-
-
 # Run association testing using GLMs
 def run_linear_model(linear_model_pack: LinearModelPack, genotype_table: pd.DataFrame, gene: str,
                      mask_name: str, is_binary: bool, always_run_corrected: bool = False) -> LinearModelResult:
@@ -215,8 +201,8 @@ def run_linear_model(linear_model_pack: LinearModelPack, genotype_table: pd.Data
         cMAC = internal_frame['has_var'].sum()
 
         if n_car <= 2:
-            gene_dict = get_null_result(n_car, cMAC, linear_model_pack.n_model, gene, mask_name,
-                                        linear_model_pack.phenoname)
+            gene_dict = LinearModelResult(n_car, cMAC, linear_model_pack.n_model, gene, mask_name,
+                                          linear_model_pack.phenoname)
         else:
             sm_results = sm.GLM.from_formula('resid ~ has_var',
                                              data=internal_frame,
@@ -232,16 +218,11 @@ def run_linear_model(linear_model_pack: LinearModelPack, genotype_table: pd.Data
                                                       data=internal_frame,
                                                       family=linear_model_pack.model_family).fit()
 
-                gene_dict = LinearModelResult(p_val_init=sm_results.pvalues['has_var'],
-                                              n_car=n_car,
-                                              cMAC=cMAC,
-                                              n_model=sm_results.nobs,
-                                              ENST=gene,
-                                              maskname=mask_name,
-                                              pheno_name=linear_model_pack.phenoname,
-                                              p_val_full=sm_results_full.pvalues['has_var'],
-                                              effect=sm_results_full.params['has_var'],
-                                              std_err=sm_results_full.bse['has_var'])
+                gene_dict = LinearModelResult(n_car, cMAC, sm_results.nobs, gene, mask_name,
+                                              linear_model_pack.phenoname,
+                                              sm_results.pvalues['has_var'], sm_results_full.pvalues['has_var'],
+                                              sm_results_full.params['has_var'], sm_results_full.bse['has_var'])
+
                 # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
                 if is_binary:
                     phenoname = linear_model_pack.phenoname
@@ -252,16 +233,10 @@ def run_linear_model(linear_model_pack: LinearModelPack, genotype_table: pd.Data
                         n_car_unaffected=len(internal_frame.query(f'has_var >= 1 & {phenoname} == 0')))
 
             else:
-                gene_dict = LinearModelResult(p_val_init=sm_results.pvalues['has_var'],
-                                              n_car=n_car,
-                                              cMAC=cMAC,
-                                              n_model=sm_results.nobs,
-                                              ENST=gene,
-                                              maskname=mask_name,
-                                              pheno_name=linear_model_pack.phenoname,
-                                              p_val_full=float('nan'),
-                                              effect=float('nan'),
-                                              std_err=float('nan'))
+                gene_dict = LinearModelResult(n_car, cMAC, sm_results.nobs, gene, mask_name,
+                                              linear_model_pack.phenoname,
+                                              p_val_init=sm_results.pvalues['has_var'])
+
                 # If we are dealing with a binary phenotype we also want to provide the "Fisher's" table
                 if is_binary:
                     phenoname = linear_model_pack.phenoname
@@ -271,7 +246,7 @@ def run_linear_model(linear_model_pack: LinearModelPack, genotype_table: pd.Data
                         n_car_affected=len(internal_frame.query(f'has_var >= 1 & {phenoname} == 1')),
                         n_car_unaffected=len(internal_frame.query(f'has_var >= 1 & {phenoname} == 0')))
     else:
-        gene_dict = get_null_result(0, 0, linear_model_pack.n_model, gene, mask_name,
-                                    linear_model_pack.phenoname)
+        gene_dict = LinearModelResult(0, 0, linear_model_pack.n_model, gene, mask_name,
+                                      linear_model_pack.phenoname)
 
     return gene_dict
