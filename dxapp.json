@@ -57,7 +57,10 @@
       {"name": "statsmodels",
       "package_manager":  "pip"},
       {"name": "burden",
-      "url":  }
+        "package_manager": "git",
+        "url":  "https://github.com/mrcepid-rap/mrcepid-runassociationtesting-burden.git",
+        "build_commands": "python3 setup.py install"
+      }
     ]
   },
   "access": {

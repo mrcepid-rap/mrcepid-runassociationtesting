@@ -21,7 +21,7 @@ def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None, print_cm
         cmd = "docker run " \
               "-v /home/dnanexus:/test " \
               "-v /usr/bin/:/prog " \
-              "egardner413/mrcepid-associationtesting " + cmd
+              "egardner413/mrcepid-burdentesting " + cmd
 
     if print_cmd:
         print(cmd)

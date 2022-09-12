@@ -79,7 +79,7 @@ class IngestData(ABC):
     # Bring our docker image into our environment so that we can run commands we need:
     @staticmethod
     def _ingest_docker_file() -> None:
-        cmd = "docker pull egardner413/mrcepid-associationtesting:latest"
+        cmd = "docker pull egardner413/mrcepid-burdentesting:latest"
         run_cmd(cmd)
 
     # Get transcripts for easy annotation:
@@ -130,9 +130,6 @@ class IngestData(ABC):
     @staticmethod
     def _select_individuals(inclusion_found, exclusion_found) -> Set[str]:
 
-        # A set of all possible samples to include in this analysis
-        genetics_samples = set()
-
         # Three steps:
         # 1. Get a list of individuals that we ARE going to use
         include_samples = set()
@@ -150,24 +147,32 @@ class IngestData(ABC):
                 indv = indv.rstrip()
                 exclude_samples.add(indv)
 
-        # 3. Get individuals that are POSSIBLE to include (they actually have WES) and only keep 'include' samples
+        # 3. Get individuals that are POSSIBLE to include (they actually have WES AND pass genetic data filtering) and
+        # only keep 'include' samples.
         # Remember! the genetic data has already been filtered to individuals with WES data.
-        genetics_fam_file = open('genetics/UKBB_470K_Autosomes_QCd.fam', 'r')
-        for line in genetics_fam_file:
-            line = line.rstrip()
-            fields = line.split()
-            eid = fields[0]
-            if inclusion_found is False and exclusion_found is False:
-                genetics_samples.add(eid)
-            elif inclusion_found is False and exclusion_found is True:
-                if eid not in exclude_samples:
-                    genetics_samples.add(eid)
-            elif inclusion_found is True and exclusion_found is False:
-                if eid in include_samples:
-                    genetics_samples.add(eid)
-            else:
-                if eid in include_samples and eid not in exclude_samples:
-                    genetics_samples.add(eid)
+
+        # A set of all possible samples to include in this analysis
+        genetics_samples = set()
+
+        with open('base_covariates.covariates', 'r') as base_covariates_file:
+            base_covar_reader = csv.DictReader(base_covariates_file, delimiter="\t")
+            for indv in base_covar_reader:
+                eid = indv['eid']
+                genetics_status = int(indv['genetics_qc_pass'])
+                # extract the variable indicating whether an individual has passed genetic data QC:
+                if int(indv['genetics_qc_pass']) == genetics_status:
+                    if inclusion_found is False and exclusion_found is False:
+                        genetics_samples.add(eid)
+                    elif inclusion_found is False and exclusion_found is True:
+                        if eid not in exclude_samples:
+                            genetics_samples.add(eid)
+                    elif inclusion_found is True and exclusion_found is False:
+                        if eid in include_samples:
+                            genetics_samples.add(eid)
+                    else:
+                        if eid in include_samples and eid not in exclude_samples:
+                            genetics_samples.add(eid)
+            base_covariates_file.close()
 
         print(f'{"Total samples after inclusion/exclusion lists applied":{65}}: {len(genetics_samples)}')
         return genetics_samples
@@ -390,23 +395,9 @@ class IngestData(ABC):
         formatted_combo_file.close()
         include_samples.close()
 
-        # Generate a plink file to use that only has included individuals:
-        cmd = "plink2 " \
-              "--bfile /test/genetics/UKBB_470K_Autosomes_QCd --make-bed --keep-fam /test/SAMPLES_Include.txt " \
-              "--out /test/genetics/UKBB_470K_Autosomes_QCd_WBA"
-        run_cmd(cmd, True)
-
-        # I have to do this to recover the sample information from plink
-        cmd = "docker run -v /home/dnanexus/:/test/ egardner413/mrcepid-associationtesting plink2 " \
-              "--bfile /test/genetics/UKBB_470K_Autosomes_QCd_WBA " \
-              "--validate | grep samples"
-        proc = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = proc.communicate()
-
         # Print to ensure that total number of individuals is consistent between genetic and covariate/phenotype data
         print(f'{"Samples with covariates after include/exclude lists applied":{65}}: {num_all_samples}')
 
         if len(pheno_names) == 1:
             print(f'{"Number of individuals with NaN/NA phenotype information":{65}}: {na_pheno_samples}')
         print(f'{"Number of individuals written to covariate/pheno file":{65}}: {indv_written}')
-        print(f'{"Plink individuals written":{65}}: {stdout.decode("utf-8").rstrip(" loaded from")}')

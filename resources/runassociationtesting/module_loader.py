@@ -40,7 +40,7 @@ class ModuleLoader(ABC):
     @staticmethod
     def dxfile_input(input_str: str) -> dxpy.DXFile:
         try:
-            dxfile = dxpy.DXFile(input_str)
+            dxfile = dxpy.DXFile(dxid=input_str)
             dxfile.describe()
             return dxfile
         except dxpy.exceptions.DXError:  # This just checks if the format of the input is correct
@@ -76,7 +76,7 @@ class ModuleLoader(ABC):
         self._parser.add_argument('--quantitative_covariates',
                                   help="A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) "
                                        "in <covarfile>. Names MUST match column header.",
-                                  type=str, dest='categorical_covariates', required=False, default=None,
+                                  type=str, dest='quantitative_covariates', required=False, default=None,
                                   metavar='covar1,covar2,covar3,...')
         self._parser.add_argument('--is_binary',
                                   help="Is the phenotype binary?",
