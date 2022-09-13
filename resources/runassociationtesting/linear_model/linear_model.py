@@ -100,16 +100,16 @@ def linear_model_null(phenotype: str, association_pack: AssociationPack) -> Line
 
         # And finally define the formula to be used by all models:
         # Make sure to define additional covariates as requested by the user...
-        form_null = f'{phenotype} ~ sex + age + age_squared + C(wes_batch) ' \
+        form_null = f'{phenotype} ~ sex + age + age_squared + C(wes_batch) + ' \
                     f'{" + ".join(["PC%s" % x for x in range(1, 11)])}'
         if len(association_pack.found_quantitative_covariates) > 0:
             for covar in association_pack.found_quantitative_covariates:
-                form_null += ' + ' + covar
+                form_null += f' + {covar}'
         if len(association_pack.found_categorical_covariates) > 0:
             for covar in association_pack.found_categorical_covariates:
-                form_null += ' + C(' + covar + ')'
+                form_null += f' + C({covar})'
 
-        form_full = form_null + ' + has_var'
+        form_full = f'{form_null} + has_var'
 
         print('Using the following formula for GLMs: ')
         print(form_full)
