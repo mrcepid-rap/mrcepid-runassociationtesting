@@ -50,6 +50,11 @@ class ModuleLoader(ABC):
             raise TypeError(f'The input for parameter – {input_str} – '
                             f'does not exist on the DNANexus platform.')
 
+    @staticmethod
+    def comma_str(input_str: str) -> List[str]:
+        input_list = input_str.split(',')
+        return input_list
+
     def _load_general_options(self) -> None:
 
         example_dxfile = 'file-123...'
@@ -69,15 +74,15 @@ class ModuleLoader(ABC):
                                   type=self.dxfile_input, dest='covarfile', required=False, default=None,
                                   metavar=example_dxfile)
         self._parser.add_argument('--categorical_covariates',
-                                  help="A comma-delimited list (e.g. covar1,covar2,covar3) of categorical "
+                                  help="A space-separated list (e.g. covar1,covar2,covar3) of categorical "
                                        "(e.g. WES batch) in <covarfile>. Names MUST match column header.",
                                   type=str, dest='categorical_covariates', required=False, default=None,
-                                  metavar='covar1,covar2,covar3,...')
+                                  nargs='*', metavar=('CAT_COVAR1', 'CAT_COVAR2'))
         self._parser.add_argument('--quantitative_covariates',
-                                  help="A comma-delimited list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) "
+                                  help="A space-separated list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) "
                                        "in <covarfile>. Names MUST match column header.",
                                   type=str, dest='quantitative_covariates', required=False, default=None,
-                                  metavar='covar1,covar2,covar3,...')
+                                  nargs='*', metavar=('QUANT_COVAR1', 'QUANT_COVAR2'))
         self._parser.add_argument('--is_binary',
                                   help="Is the phenotype binary?",
                                   dest='is_binary', action='store_true')

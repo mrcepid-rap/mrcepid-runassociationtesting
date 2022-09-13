@@ -10,8 +10,8 @@ class ProgramArgs(ABC):
     phenofile: List[dxpy.DXFile]
     phenoname: str
     covarfile: dxpy.DXFile
-    categorical_covariates: str
-    quantitative_covariates: str
+    categorical_covariates: List[str]
+    quantitative_covariates: List[str]
     is_binary: bool
     sex: int
     exclusion_list: dxpy.DXFile

@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import List, Tuple, Set
+from typing import Tuple, Set
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
 from runassociationtesting.association_resources import *
@@ -232,8 +232,8 @@ class IngestData(ABC):
 
     # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
     @staticmethod
-    def _process_additional_covariates(additional_covariates_found: bool, categorical_covariates: str,
-                                       quantitative_covariates: str) -> Tuple[List[str], List[str], dict]:
+    def _process_additional_covariates(additional_covariates_found: bool, categorical_covariates: List[str],
+                                       quantitative_covariates: List[str]) -> Tuple[List[str], List[str], dict]:
 
         found_categorical_covariates = []
         found_quantitative_covariates = []
@@ -256,7 +256,6 @@ class IngestData(ABC):
 
             # Now process & check the categorical/quantitative covariates lists and match it to field_names:
             if categorical_covariates is not None:
-                categorical_covariates = categorical_covariates.split(',')
                 for covar in categorical_covariates:
                     if covar in field_names:
                         found_categorical_covariates.append(covar)
@@ -264,7 +263,6 @@ class IngestData(ABC):
                         print(f'Provided categorical covariate {covar} not found in additional covariates file...')
 
             if quantitative_covariates is not None:
-                quantitative_covariates = quantitative_covariates.split(',')
                 for covar in quantitative_covariates:
                     if covar in field_names:
                         found_quantitative_covariates.append(covar)
