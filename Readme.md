@@ -472,12 +472,15 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
         -imode=extract
         -ioutput_prefix="HC_PTV.T2D" \
         -iinput_args='
-                --gene_ids BRCA2 \
+                --gene_ids BRCA2 CHEK2 \
                 --association_tarballs file-1234567890ABCDEFGHIJKLMN \
                 --phenofile file-1234567890ABCDEFGHIJKLMN \
                 --is_binary \
                 --inclusion_list file-1234567890ABCDEFGHIJKLMN \
-                --sex 2'
+                --sex 2 \
+                --transcript_index file-1234567890ABCDEFGHIJKLMN \
+                --base_covariates file-1234567890ABCDEFGHIJKLMN \
+                --bgen_index file-1234567890ABCDEFGHIJKLMN \'
 ```
 
 3. Run a PheWAS on multiple cancer types for multiple masks for BRCA2 (note that `--phenofile` includes MULTIPLE phenotypes in this example!):
@@ -492,7 +495,9 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
                 --phenofile file-1234567890ABCDEFGHIJKLMN \
                 --is_binary \
                 --inclusion_list file-1234567890ABCDEFGHIJKLMN \
-                --sex 2'
+                --sex 2 \
+                --transcript_index file-1234567890ABCDEFGHIJKLMN \
+                --base_covariates file-1234567890ABCDEFGHIJKLMN'
 ```
 
 Brief I/O information can also be retrieved on the command line:

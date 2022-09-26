@@ -160,7 +160,7 @@ class IngestData(ABC):
                 eid = indv['eid']
                 genetics_status = int(indv['genetics_qc_pass'])
                 # extract the variable indicating whether an individual has passed genetic data QC:
-                if int(indv['genetics_qc_pass']) == genetics_status:
+                if genetics_status == 1:
                     if inclusion_found is False and exclusion_found is False:
                         genetics_samples.add(eid)
                     elif inclusion_found is False and exclusion_found is True:

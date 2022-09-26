@@ -21,8 +21,6 @@ from runassociationtesting.module_loader import *
 @dxpy.entry_point('main')
 def main(mode: str, output_prefix: str, input_args: str):
 
-    # Load information for the module being used
-
     # Define the package to search for based on the 'mode' requested
     module_loader = conditional_import(f'{mode}.loader')
 

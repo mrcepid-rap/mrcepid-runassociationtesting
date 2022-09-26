@@ -4,7 +4,7 @@
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
   "version": "1.3.0",
-  "openSource": true,
+  "openSource": false,
   "inputSpec": [
     {
       "name": "output_prefix",
@@ -51,6 +51,7 @@
     "distribution": "Ubuntu",
     "release": "20.04",
     "version": "0",
+    "assetDepends": [],
     "execDepends": [
       {"name": "pandas",
         "package_manager": "pip"},

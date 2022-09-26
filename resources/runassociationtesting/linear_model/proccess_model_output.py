@@ -75,7 +75,7 @@ def write_staar_csv(file_name: str, completed_staar_files: List[str]):
     with open(file_name, 'w') as staar_output:
         output_csv = csv.DictWriter(staar_output,
                                     delimiter="\t",
-                                    fieldnames=['SNP', 'n.samps', 'pheno', 'relatedness.correction',
+                                    fieldnames=['SNP', 'n.samps', 'pheno_name', 'relatedness.correction',
                                                 'staar.O.p', 'staar.SKAT.p', 'staar.burden.p',
                                                 'staar.ACAT.p', 'n_var', 'cMAC'])
         output_csv.writeheader()
@@ -175,10 +175,10 @@ def merge_glm_staar_runs(output_prefix: str, is_snp_tar: bool = False, is_gene_t
         staar_table[field_names] = staar_table['SNP'].str.split("-", expand=True)
 
         # Select STAAR columns we need to merge in/match on
-        staar_table = staar_table[['ENST', 'pheno', 'n_var', 'relatedness.correction', 'staar.O.p', 'staar.SKAT.p',
+        staar_table = staar_table[['ENST', 'pheno_name', 'n_var', 'relatedness.correction', 'staar.O.p', 'staar.SKAT.p',
                                    'staar.burden.p', 'staar.ACAT.p']]
 
-        final_table = glm_table.merge(right=staar_table, on=['ENST', 'pheno'])
+        final_table = glm_table.merge(right=staar_table, on=['ENST', 'pheno_name'])
 
         with open(output_prefix + '.' + prefix + '.STAAR_glm.stats.tsv', 'w') as gene_out:
 
@@ -192,10 +192,10 @@ def merge_glm_staar_runs(output_prefix: str, is_snp_tar: bool = False, is_gene_t
         staar_table = pd.read_csv(gzip.open(output_prefix + '.genes.STAAR.stats.tsv.gz', 'rb'), sep='\t')
 
         # Select STAAR columns we need to merge in/match on
-        staar_table = staar_table[['ENST', 'MASK', 'MAF', 'pheno', 'n_var', 'relatedness.correction', 'staar.O.p',
+        staar_table = staar_table[['ENST', 'MASK', 'MAF', 'pheno_name', 'n_var', 'relatedness.correction', 'staar.O.p',
                                    'staar.SKAT.p', 'staar.burden.p', 'staar.ACAT.p']]
 
-        final_table = glm_table.merge(right=staar_table, on=['ENST', 'MASK', 'MAF', 'pheno'])
+        final_table = glm_table.merge(right=staar_table, on=['ENST', 'MASK', 'MAF', 'pheno_name'])
 
         with open(output_prefix + '.genes.STAAR_glm.stats.tsv', 'w') as gene_out:
 
