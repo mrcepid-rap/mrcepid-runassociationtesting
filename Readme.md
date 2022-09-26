@@ -447,9 +447,9 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
                 --transcript_index file-1234567890ABCDEFGHIJKLMN \
                 --base_covariates file-1234567890ABCDEFGHIJKLMN \
                 --bgen_index file-1234567890ABCDEFGHIJKLMN \
-                --bed_file file-1234567890ABCDEFGHIJKLMN \
-                --fam_file file-1234567890ABCDEFGHIJKLMN \
-                --bim_file file-1234567890ABCDEFGHIJKLMN \
+                --array_bed_file file-1234567890ABCDEFGHIJKLMN \
+                --array_fam_file file-1234567890ABCDEFGHIJKLMN \
+                --array_bim_file file-1234567890ABCDEFGHIJKLMN \
                 --low_MAC_list file-1234567890ABCDEFGHIJKLMN \
                 --sparse_grm file-1234567890ABCDEFGHIJKLMN \
                 --sparse_grm_sample file-1234567890ABCDEFGHIJKLMN`
