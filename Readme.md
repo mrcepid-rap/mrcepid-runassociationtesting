@@ -19,7 +19,7 @@ https://documentation.dnanexus.com/.
     + [DNANexus Inputs](#dnanexus-inputs)
     + [Command-Line Inputs](#command-line-inputs)
     + [Default Modules](#default-modules)
-      + [Loading New Modules](#loading-new-modules)
+      - [Loading New Modules](#loading-new-modules)
     + [Phenotypes File](#phenotypes-file)
     + [Inclusion / Exclusion lists](#inclusion--exclusion-lists)
     + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate-quantitative--categorical-file)
@@ -277,18 +277,18 @@ the type of analysis that is done via the requested module (`mode`) and ii) the 
 then uses a third input to provide information to the default set of commands that all modules provide and the requested 
 module itself (`input_args`).
 
-| input         | description                                                                                                              |
-|---------------|--------------------------------------------------------------------------------------------------------------------------|
-| mode          | Mode to run this applet in. **MUST** be one of 'burden', 'extract', or 'phewas'. Case must match.                        |
-| output_prefix | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz' |
-| input_args    | Additional inputs to control association tests. See below for what this means.                                           |
+| input         | description                                                                                                                                              |
+|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mode          | Mode to run this applet in. **MUST** match the name of an installed module. By default, can be one of 'burden', 'extract', or 'phewas'. Case must match. |
+| output_prefix | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                 |
+| input_args    | Additional inputs to control association tests. See below for what this means.                                                                           |
 
 #### Command-Line Inputs
 
-These are a standard set of command-line inputs required for all modules provided using the `input_args` input described 
+These are a standard set of command-line inputs for all modules provided using the `input_args` input described 
 above. For how these inputs are provided, see the [examples below](#running-on-dnanexus). If the option is not required,
 defaults for each option are provided in **[bold brackets]**. Boolean options are flags, and change to 'true' when
-provided. 
+provided.
 
 | input                   | Boolean? | Required? | description                                                                                                                                                                          |
 |-------------------------|----------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -306,13 +306,13 @@ provided.
 
 #### Default Modules
 
-As discussed above, this applet can be run in one of three modes with each of these modes requiring slightly different 
+As discussed above, this applet can be run in one of several modes with each of these modes requiring slightly different 
 inputs. A default set of modules is listed below. For specific inputs for these modules, please see their individual
 README documents located within their respective GitHub repositories.
 
-1. `burden` - https://github.com/mrcepid-rap/mrcepid-runassociationtesting-burden
-2. `extract` – https://github.com/mrcepid-rap/mrcepid-runassociationtesting-extract
-3. `phewas` – https://github.com/mrcepid-rap/mrcepid-runassociationtesting-phewas
+1. `burden` - [See on GitHub](https://github.com/mrcepid-rap/mrcepid-runassociationtesting-burden)
+2. `extract` – [See on GitHub](https://github.com/mrcepid-rap/mrcepid-runassociationtesting-extract)
+3. `phewas` – [See on GitHub](https://github.com/mrcepid-rap/mrcepid-runassociationtesting-phewas)
 
 ##### Loading New Modules
 
@@ -333,7 +333,8 @@ or NA/NaN. Individuals with NA/NaN values are automatically excluded during test
 
 When running in PheWAS mode, the user can also provide a .JSON compatible file-array of multiple phenotype files on which to
 perform PheWAS. Please see the [DNANexus Documentation](https://documentation.dnanexus.com/developer/api/running-analyses/io-and-run-specifications) 
-for how to do this in the UKBB RAP.
+for how to do this in the UKBB RAP. Note that the same file can be provided to both `--phenofile` file and 
+`--covarfile` so long as `--phenoname` is provided.
 
 ```text
 FID IID pheno_name
@@ -346,15 +347,9 @@ FID IID pheno_name
 
 #### Inclusion / Exclusion lists
 
-These files are single-row .txt files with one eid per line. I have created three files already, but any file that 
-conforms to the proper format can be used. The following files are already available on the RAP and have already been 
-restricted to samples that have WES:
-
-| name                               | file ID                       | description                                                   | list length  |
-|------------------------------------|-------------------------------|---------------------------------------------------------------|--------------|
-| EXCLUDEFOR_Relateds.txt            | file-GBVYYQ0J57y5gp4j5q7gP2Qg | List of related individuals (all ancestries)                  | 65,575       |
-| EXCLUDEFOR_White_Euro_Relateds.txt | file-GBVYYP0J57y3Z5395g7q33z6 | List of related and NON-european ancestry individuals         | 96,271       |
-| KEEPFOR_White_Euro.txt             | file-GBVYYPQJ57y5ZV904gzFb873 | List of all European ancestry individuals (including related) | 421,839      |
+These files are single-row .txt files with one eid per line. I have created several files already, but any file that 
+conforms to the proper format can be used – one eid per line. Please see the documentation for 
+[mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) for more information.
 
 #### Additional Covariate (Quantitative / Categorical) File
 
@@ -460,10 +455,10 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
                 --sparse_grm_sample file-1234567890ABCDEFGHIJKLMN`
 ```
 
-**Note:** The above command line DOES NOT have an inclusion/exclusion list. Be sure to consider the individuals that you
+**Note:** The above command line DOES NOT have an exclusion list. Be sure to consider the individuals that you
 keep for your model!
 
-**Note:** boolean parameters are simple flags and do not require actual inputs (e.g. 'true' or 'false').
+**Note:** boolean parameters are simple flags and do not require actual inputs (e.g. `--is_binary` rather than `--is_binary true`).
 
 2. Extract HC PTVs and samples for the gene BRCA2 from a single tarball:
 
@@ -480,7 +475,9 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
                 --sex 2 \
                 --transcript_index file-1234567890ABCDEFGHIJKLMN \
                 --base_covariates file-1234567890ABCDEFGHIJKLMN \
-                --bgen_index file-1234567890ABCDEFGHIJKLMN \'
+                --bgen_index file-1234567890ABCDEFGHIJKLMN \
+                --sparse_grm file-1234567890ABCDEFGHIJKLMN \
+                --sparse_grm_sample file-1234567890ABCDEFGHIJKLMN'
 ```
 
 3. Run a PheWAS on multiple cancer types for multiple masks for BRCA2 (note that `--phenofile` includes MULTIPLE phenotypes in this example!):
@@ -495,9 +492,11 @@ dx run app-mrcepid-runassociationtesting --priority low --destination results/ \
                 --phenofile file-1234567890ABCDEFGHIJKLMN \
                 --is_binary \
                 --inclusion_list file-1234567890ABCDEFGHIJKLMN \
-                --sex 2 \
+                --sex 0 \
                 --transcript_index file-1234567890ABCDEFGHIJKLMN \
-                --base_covariates file-1234567890ABCDEFGHIJKLMN'
+                --base_covariates file-1234567890ABCDEFGHIJKLMN \
+                --sparse_grm file-1234567890ABCDEFGHIJKLMN \
+                --sparse_grm_sample file-1234567890ABCDEFGHIJKLMN'
 ```
 
 Brief I/O information can also be retrieved on the command line:
@@ -508,7 +507,7 @@ Brief I/O information can also be retrieved on the command line:
 dx run app-mrcepid-runassociationtesting --help
 ```
 
-2. For commandline-style options:
+2. For commandline-style options for specific modules:
 
 ```commandline
 dx run app-mrcepid-runassociationtesting -imode='burden' -ioutput_prefix='test' -iinput_args='--help'
