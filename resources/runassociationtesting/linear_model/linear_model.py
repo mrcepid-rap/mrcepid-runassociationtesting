@@ -154,8 +154,12 @@ def load_tarball_linear_model(tarball_prefix: str, is_snp_tar: bool, is_gene_tar
                                      dtype={'FID': str})
 
             # What I understand here is that 'sum()' will only sum on numeric columns, so I don't have to worry
-            # about the varID column being drawn in
-            geno_table = geno_table.groupby(['ENST', 'FID']).sum()
+            # about the varID column being drawn in.
+            # Note: This assumption is now broken and I have slightly changed the order of this function to spell out
+            # which column we sum by as pandas stopped assuming the correct column ~vers1.5.
+            # No idea why I am commenting that here instead of in commit messages?
+            geno_table = geno_table.groupby(['ENST', 'FID'])
+            geno_table = geno_table['gt'].sum()
             geno_tables.append(geno_table)
 
     # And concatenate the final data_frame together:
