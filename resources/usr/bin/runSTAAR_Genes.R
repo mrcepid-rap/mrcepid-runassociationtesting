@@ -45,7 +45,7 @@ poss <- obj_nullmodel$id_include # this gets possible individuals from the null 
 genotypes <- genotypes[poss, 1:ncol(genotypes)] # And then use that list to pare down the genotype matrix
 
 # Make a data.table to iterate through that contains all genes defined in poss.genes above:
-gene.results <- data.table(geneID=poss.genes, n.samps=nrow(genotypes), pheno=pheno_name, mask=filename_prefix, relatedness.correction=obj_nullmodel$corrected_for_relateds)
+gene.results <- data.table(geneID=poss.genes, n.samps=nrow(genotypes), pheno_name=pheno_name, mask=filename_prefix, relatedness.correction=obj_nullmodel$corrected_for_relateds)
 gene.results[,SNP:=paste(geneID,mask,sep="-")] # This sets an ID similar to BOLT to allow identical processing
 
 # This function just takes one gene and runs it through STAAR

@@ -1,19 +1,19 @@
 import os
 import csv
+from typing import List
+
 import dxpy
 import gzip
 import subprocess
 import pandas as pd
 import pandas.core.series
 
-from association_pack import AssociationPack
-
 
 # This function runs a command on an instance, either with or without calling the docker instance we downloaded
 # By default, commands are not run via Docker, but can be changed by setting is_docker = True
 # Also, by default, standard out is not saved, but can be modified with the 'stdout_file' parameter.
 # print_cmd is for internal debugging purposes when testing new code
-def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None, print_cmd = False) -> None:
+def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None, print_cmd=False) -> None:
 
     # -v here mounts a local directory on an instance (in this case the home dir) to a directory internal to the
     # Docker instance named /test/. This allows us to run commands on files stored on the AWS instance within Docker.
@@ -23,7 +23,7 @@ def run_cmd(cmd: str, is_docker: bool = False, stdout_file: str = None, print_cm
         cmd = "docker run " \
               "-v /home/dnanexus:/test " \
               "-v /usr/bin/:/prog " \
-              "egardner413/mrcepid-associationtesting " + cmd
+              "egardner413/mrcepid-burdentesting " + cmd
 
     if print_cmd:
         print(cmd)
@@ -55,7 +55,7 @@ def get_chromosomes(is_snp_tar: bool = False, is_gene_tar: bool = False):
     elif is_gene_tar:
         chromosomes = list(['GENE'])
     else:
-        chromosomes = list(range(1,23)) # Is 0 based on the right coordinate...? (So does 1..22)
+        chromosomes = list(range(1, 23))  # Is 0 based on the right coordinate...? (So does 1..22)
         chromosomes.extend(['X'])
         chromosomes = list(map(str, chromosomes))
 
@@ -70,17 +70,17 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
     bgen_sample = dxpy.DXFile(chrom_bgen_index['sample'])
     bgen = dxpy.DXFile(chrom_bgen_index['bgen'])
     vep = dxpy.DXFile(chrom_bgen_index['vep'])
-    dxpy.download_dxfile(bgen_index.get_id(), "filtered_bgen/" + chromosome + ".filtered.bgen.bgi")
-    dxpy.download_dxfile(bgen_sample.get_id(), "filtered_bgen/" + chromosome + ".filtered.sample")
-    dxpy.download_dxfile(bgen.get_id(), "filtered_bgen/" + chromosome + ".filtered.bgen")
-    dxpy.download_dxfile(vep.get_id(), "filtered_bgen/" + chromosome + ".filtered.vep.tsv.gz")
+    dxpy.download_dxfile(bgen_index.get_id(), f'filtered_bgen/{chromosome}.filtered.bgen.bgi')
+    dxpy.download_dxfile(bgen_sample.get_id(), f'filtered_bgen/{chromosome}.filtered.sample')
+    dxpy.download_dxfile(bgen.get_id(), f'filtered_bgen/{chromosome}.filtered.bgen')
+    dxpy.download_dxfile(vep.get_id(), f'filtered_bgen/{chromosome}.filtered.vep.tsv.gz')
 
     # And then do the filtering...
-    cmd = "plink2 --threads 4 --bgen /test/filtered_bgen/" + chromosome + ".filtered.bgen 'ref-last' " \
-            "--sample /test/filtered_bgen/" + chromosome + ".filtered.sample " \
-            "--export bgen-1.2 'bits='8 " \
-            "--out /test/" + chromosome + ".markers " \
-            "--keep /test/SAMPLES_Include.txt"
+    cmd = f'plink2 --threads 4 --bgen /test/filtered_bgen/{chromosome}.filtered.bgen "ref-last" ' \
+          f'--sample /test/filtered_bgen/{chromosome}.filtered.sample ' \
+          f'--export bgen-1.2 "bits="8 ' \
+          f'--out /test/{chromosome}.markers ' \
+          f'--keep /test/SAMPLES_Include.txt'
     run_cmd(cmd, True)
 
     # The sample file output by plink2 is a disaster, so fix it here:
@@ -94,12 +94,12 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
             elif line[3] == 'D':
                 fixed_samp_bolt.write('0 0 0 D\n')
             else:
-                fixed_samp_bolt.write("%s %s 0 NA\n" % (line[1], line[1]))
+                fixed_samp_bolt.write(f'{line[1]} {line[1]} 0 NA\n')
         samp_file.close()
         fixed_samp_bolt.close()
 
     # And finally index the file
-    cmd = "bgenix -index -g /test/" + chromosome + '.markers.bgen'
+    cmd = f'bgenix -index -g /test/{chromosome}.markers.bgen'
     run_cmd(cmd, True)
 
 
@@ -119,31 +119,29 @@ def get_gene_id(gene_id: str, transcripts_table: pandas.DataFrame) -> pandas.cor
         print("gene_id – " + gene_id + " – looks like an ENST value... validating...")
         try:
             gene_info = transcripts_table.loc[gene_id]
-            print("Found one matching ENST (%s - %s)... proceeding..." % (gene_id, gene_info['coord']))
+            print(f'Found one matching ENST ({gene_id} - {gene_info["coord"]})... proceeding...')
         except KeyError:
-            print("Did not find a transcript with ENST value %s... terminating..." % gene_id)
+            raise dxpy.AppError(f'Did not find a transcript with ENST value {gene_id}... terminating...')
     else:
         print("gene_id – " + gene_id + " – does not look like an ENST value, searching for symbol instead...")
         found_rows = transcripts_table[transcripts_table['SYMBOL'] == gene_id]
         if len(found_rows) == 1:
             found_enst = found_rows.index[0]
             gene_info = transcripts_table.loc[found_enst]
-            print("Found one matching ENST (%s - %s) for SYMBOL %s... proceeding..." % (found_enst, gene_info['coord'], gene_id))
+            print(f'Found one matching ENST ({found_enst} - {gene_info["coord"]}) for SYMBOL {gene_id}... '
+                  f'proceeding...')
         elif len(found_rows) > 1:
-            gene_info = None
-            print("Found %i ENST IDs (%s) for SYMBOL %s... Please re-run using exact ENST to ensure consistent results..." % (len(found_rows), ','.join(found_rows.index.to_list()), gene_id))
-            raise Exception("Multiple ENST IDs")
+            raise dxpy.AppError(f'Found {len(found_rows)} ENST IDs ({",".join(found_rows.index.to_list())} for SYMBOL '
+                                f'{gene_id}... Please re-run using exact ENST to ensure consistent results...')
         else:
-            gene_info = None
-            print("Did not find an associated ENST ID for SYMBOL %s... Please re-run after checking SYMBOL/ENST used..." % (gene_id))
-            raise Exception("ENST ID not found")
+            raise dxpy.AppError(f'Did not find an associated ENST ID for SYMBOL {gene_id}... '
+                                f'Please re-run after checking SYMBOL/ENST used...')
 
     return gene_info
 
 
 def process_snp_or_gene_tar(is_snp_tar, is_gene_tar, tarball_prefix) -> tuple:
 
-    file_prefix = None
     if is_snp_tar:
         print("Running in SNP mode...")
         file_prefix = 'SNP'
@@ -152,6 +150,8 @@ def process_snp_or_gene_tar(is_snp_tar, is_gene_tar, tarball_prefix) -> tuple:
         print("Running in GENE mode...")
         file_prefix = 'GENE'
         gene_id = 'ENST99999999999'
+    else:
+        raise dxpy.AppError('There is no way you should see this error (process_snp_or_gene_tar)')
 
     # Get the chromosomes that are represented in the SNP/GENE tarball
     # This variants_table file will ONLY have chromosomes in it represented by a provided SNP/GENE list
@@ -165,9 +165,9 @@ def process_snp_or_gene_tar(is_snp_tar, is_gene_tar, tarball_prefix) -> tuple:
         chromosomes.add(str(row['chrom']))
 
     # And filter the relevant SAIGE file to just the individuals we want so we can get actual MAC
-    cmd = "bcftools view --threads 4 -S /test/SAMPLES_Include.txt -Ob -o /test/" + \
-          tarball_prefix + "." + file_prefix + ".saige_input.bcf /test/" + \
-          tarball_prefix + "." + file_prefix + ".SAIGE.bcf"
+    cmd = f'bcftools view --threads 4 -S /test/SAMPLES_Include.txt -Ob -o /test/' \
+          f'{tarball_prefix}.{file_prefix}.saige_input.bcf /test/' \
+          f'{tarball_prefix}.{file_prefix}.SAIGE.bcf'
     run_cmd(cmd, True)
 
     # Build a fake gene_info that can feed into the other functions in this class
@@ -177,135 +177,38 @@ def process_snp_or_gene_tar(is_snp_tar, is_gene_tar, tarball_prefix) -> tuple:
     return gene_info, chromosomes
 
 
-def process_linear_model_outputs(association_pack: AssociationPack, gene_infos: list) -> list:
+# These two methods help the different tools in defining the correct field names to include in outputs
+def define_field_names_from_pandas(field_one: pd.Series) -> List[str]:
 
-    if gene_infos is not None:
-        valid_genes = []
-        for gene_info in gene_infos:
-            valid_genes.append(gene_info.name)
+    # Test what columns we have in the 'SNP' field so we can name them...
+    field_one = field_one['SNP'].split("-")
+    field_names = ['ENST']
+    if len(field_one) == 2:  # This is the bare minimum, always name first column ENST, and second column 'var1'
+        field_names.append('var1')
+    elif len(field_one) == 3:  # This could be the standard naming format... check that column [2] is MAF/AC
+        if 'MAF' in field_one[2] or 'AC' in field_one[2]:
+            field_names.extend(['MASK', 'MAF'])
+        else:  # This means we didn't hit on MAF in column [2] and a different naming convention is used...
+            field_names.extend(['var1', 'var2'])
     else:
-        valid_genes = None
+        for i in range(2, len(field_one) + 1):
+            field_names.append('var%i' % i)
 
-    if association_pack.is_snp_tar:
-        os.rename(association_pack.output_prefix + '.lm_stats.tmp',
-                  association_pack.output_prefix + '.SNP.glm.stats.tsv')
-        outputs = [association_pack.output_prefix + '.SNP.glm.stats.tsv']
-    elif association_pack.is_gene_tar:
-        os.rename(association_pack.output_prefix + '.lm_stats.tmp',
-                  association_pack.output_prefix + '.GENE.glm.stats.tsv')
-        outputs = [association_pack.output_prefix + '.GENE.glm.stats.tsv']
-    else:
-        # read in the GLM stats file:
-        glm_table = pd.read_csv(open(association_pack.output_prefix + ".lm_stats.tmp", 'r'), sep = "\t")
-
-        # Now process the gene table into a useable format:
-        # First read in the transcripts file
-        transcripts_table = build_transcript_table()
-
-        # Limit to genes we care about if running only a subset:
-        if valid_genes is not None:
-            transcripts_table = transcripts_table.loc[valid_genes]
-
-        # Test what columns we have in the 'SNP' field so we can name them...
-        field_one = glm_table.iloc[0]
-        field_one = field_one['maskname'].split("-")
-        field_names = []
-        if len(field_one) == 2: # This could be the standard naming format... check that column [1] is MAF/AC
-            if 'MAF' in field_one[1] or 'AC' in field_one[1]:
-                field_names.extend(['MASK','MAF'])
-            else: # This means we didn't hit on MAF/AC in column [2] and a different naming convention is used...
-                field_names.extend(['var1','var2'])
-        else:
-            for i in range(2,len(field_one) + 1):
-                field_names.append('var%i' % i)
-
-        # Process the 'SNP' column into separate fields and remove
-        glm_table[field_names] = glm_table['maskname'].str.split("-",expand = True)
-        glm_table = glm_table.drop(columns=['maskname'])
-
-        # Now merge the transcripts table into the gene table to add annotation and the write
-        glm_table = pd.merge(transcripts_table, glm_table, on='ENST', how="left")
-        with open(association_pack.output_prefix + '.genes.glm.stats.tsv', 'w') as gene_out:
-
-            # Sort just in case
-            glm_table = glm_table.sort_values(by=['chrom','start','end'])
-
-            glm_table.to_csv(path_or_buf=gene_out, index = False, sep="\t", na_rep='NA')
-            gene_out.close()
-
-            # And bgzip and tabix...
-            cmd = "bgzip /test/" + association_pack.output_prefix + '.genes.glm.stats.tsv'
-            run_cmd(cmd, True)
-            cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + association_pack.output_prefix + '.genes.glm.stats.tsv.gz'
-            run_cmd(cmd, True)
-
-        outputs = [association_pack.output_prefix + '.genes.glm.stats.tsv.gz',
-                   association_pack.output_prefix + '.genes.glm.stats.tsv.gz.tbi']
-
-    return outputs
+    return field_names
 
 
-def merge_glm_staar_runs(association_pack: AssociationPack) -> list:
-
-    if association_pack.is_non_standard_tar:
-
-        if association_pack.is_gene_tar:
-            prefix = 'GENE'
-        elif association_pack.is_snp_tar:
-            prefix = 'SNP'
-
-        glm_table = pd.read_csv(association_pack.output_prefix + '.' + prefix + '.glm.stats.tsv', sep='\t')
-        staar_table = pd.read_csv(association_pack.output_prefix + '.' + prefix + '.STAAR.stats.tsv', sep='\t')
-
-        # We need to pull the ENST value out of the STAAR table 'SNP' variable while trying to avoid any bugs due to file/pheno names
-        field_one = staar_table.iloc[0]
-        field_one = field_one['SNP'].split("-")
-        field_names = []
-        if 'ENST' in field_one[0]:
-            field_names.append('ENST')
-            for i in range(2, len(field_one) + 1):
-                field_names.append('var%i' % i)
+def define_field_names_from_tarball_prefix(tarball_prefix: str, variant_table: pd.DataFrame) -> pd.DataFrame:
+    tarball_prefix_split = tarball_prefix.split("-")
+    if len(tarball_prefix_split) == 2:  # This could be the standard naming format. Check that column [1] is MAF/AC
+        if 'MAF' in tarball_prefix_split[1] or 'AC' in tarball_prefix_split[1]:
+            field_names = ['MASK', 'MAF']
+            variant_table[field_names] = tarball_prefix_split
         else:  # This means we didn't hit on MAF/AC in column [2] and a different naming convention is used...
-            raise dxpy.AppError('ENST value is not in the first column of the STAAR table... Error!')
-
-        staar_table[field_names] = staar_table['SNP'].str.split("-", expand=True)
-
-        # Select STAAR columns we need to merge in/match on
-        staar_table = staar_table[['ENST', 'pheno', 'n_var', 'relatedness.correction', 'staar.O.p', 'staar.SKAT.p', 'staar.burden.p', 'staar.ACAT.p']]
-
-        final_table = glm_table.merge(right=staar_table, on=['ENST', 'pheno'])
-
-        with open(association_pack.output_prefix + '.' + prefix + '.STAAR_glm.stats.tsv', 'w') as gene_out:
-
-            final_table.to_csv(path_or_buf=gene_out, index=False, sep="\t", na_rep='NA')
-            gene_out.close()
-
-        outputs = [association_pack.output_prefix + '.' + prefix + '.STAAR_glm.stats.tsv']
-
+            field_names = ['var1', 'var2']
+            variant_table[field_names] = tarball_prefix_split
     else:
-        glm_table = pd.read_csv(gzip.open(association_pack.output_prefix + '.genes.glm.stats.tsv.gz', 'rb'), sep='\t')
-        staar_table = pd.read_csv(gzip.open(association_pack.output_prefix + '.genes.STAAR.stats.tsv.gz', 'rb'), sep='\t')
+        for i in range(1, len(tarball_prefix_split) + 1):
+            field_name = 'var%i' % i
+            variant_table[field_name] = tarball_prefix_split[i - 1]
 
-        # Select STAAR columns we need to merge in/match on
-        staar_table = staar_table[['ENST', 'MASK', 'MAF', 'pheno', 'n_var', 'relatedness.correction', 'staar.O.p', 'staar.SKAT.p', 'staar.burden.p', 'staar.ACAT.p']]
-
-        final_table = glm_table.merge(right = staar_table, on = ['ENST','MASK','MAF','pheno'])
-
-        with open(association_pack.output_prefix + '.genes.STAAR_glm.stats.tsv', 'w') as gene_out:
-
-            # Sort just in case
-            final_table = final_table.sort_values(by=['chrom', 'start', 'end'])
-
-            final_table.to_csv(path_or_buf=gene_out, index=False, sep="\t", na_rep='NA')
-            gene_out.close()
-
-            # And bgzip and tabix...
-            cmd = "bgzip /test/" + association_pack.output_prefix + '.genes.STAAR_glm.stats.tsv'
-            run_cmd(cmd, True)
-            cmd = "tabix -S 1 -s 2 -b 3 -e 4 /test/" + association_pack.output_prefix + '.genes.STAAR_glm.stats.tsv.gz'
-            run_cmd(cmd, True)
-
-        outputs = [association_pack.output_prefix + '.genes.STAAR_glm.stats.tsv.gz',
-                   association_pack.output_prefix + '.genes.STAAR_glm.stats.tsv.gz.tbi']
-
-    return outputs
+    return variant_table

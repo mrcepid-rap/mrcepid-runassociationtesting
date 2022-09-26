@@ -1,149 +1,401 @@
-import tarfile
-from os.path import exists
+from abc import ABC
+from typing import Tuple, Set
 
-
-from association_resources import *
+from runassociationtesting.association_pack import AssociationPack, ProgramArgs
+from runassociationtesting.association_resources import *
 
 
 # This class is slightly different that in other applets I have designed; it handles ALL inputs rather
-# than just external dependencies
-class IngestData:
+# than just external dependencies.
+# Note that it is an abstract class (ABC) so that different modules can access the methods within this class, but
+# add additional imports as required.
+class IngestData(ABC):
 
-    def __init__(self, association_tarballs: dict, phenofile: list, covarfile: dict, inclusion_list: dict,
-                 exclusion_list: dict, bgen_index: dict, transcript_index: dict, base_covariates: dict,
-                 bed_file: dict, fam_file: dict, bim_file: dict, low_MAC_list: dict,
-                 sparse_grm: dict, sparse_grm_sample: dict):
+    def __init__(self, parsed_options: ProgramArgs):
 
-        # Set reasonable defaults
-        self.additional_covariates_found = False
-        self.inclusion_found = False
-        self.exclusion_found = False
-        self.phenofiles = []
-        self.tarball_prefixes = []
-        self.bgen_dict = {}
+        self._parsed_options = parsed_options
 
         # Work our way through all the resources we need
+        threads = self._get_num_threads()
+        is_binary = parsed_options.is_binary
+        sex = parsed_options.sex
         self._ingest_docker_file()
-        self._ingest_transcript_index(transcript_index)
-        self._ingest_genetic_data(bed_file, fam_file, bim_file, low_MAC_list, sparse_grm, sparse_grm_sample)
-        self._ingest_phenofile(phenofile)
-        self._ingest_covariates(base_covariates, covarfile)
-        self._ingest_tarballs(association_tarballs)
-        self._ingest_bgen(bgen_index)
-        self._define_exclusion_lists(inclusion_list, exclusion_list)
+        self._ingest_transcript_index(parsed_options.transcript_index)
+        pheno_files = self._ingest_phenofile(parsed_options.phenofile)
+        additional_covariates_found = self._ingest_covariates(parsed_options.base_covariates,
+                                                              parsed_options.covarfile)
+        inclusion_found, exclusion_found = self._define_exclusion_lists(parsed_options.inclusion_list,
+                                                                        parsed_options.exclusion_list)
+
+        # Once all data is ingested, process the covariates/phenotypes into a single file of
+        # individuals that we want to analyse
+        # Set samples to use
+        genetics_samples = self._select_individuals(inclusion_found, exclusion_found)
+
+        # Define phenotype information
+        phenotypes, pheno_names = self._process_phenotype(parsed_options.phenoname, pheno_files)
+
+        # Process additional covariates (check if requested in the function)
+        found_categorical_covariates, found_quantitative_covariates, add_covars = \
+            self._process_additional_covariates(additional_covariates_found,
+                                                parsed_options.categorical_covariates,
+                                                parsed_options.quantitative_covariates)
+
+        # Create the joint pheno/covariate file for testing
+        self._create_covariate_file(genetics_samples=genetics_samples,
+                                    phenotypes=phenotypes,
+                                    pheno_names=pheno_names,
+                                    additional_covariates_found=additional_covariates_found,
+                                    found_quantitative_covariates=found_quantitative_covariates,
+                                    found_categorical_covariates=found_categorical_covariates,
+                                    add_covars=add_covars,
+                                    sex=sex)
+
+        # And build an object that will contain all the information we need to run some specified analysis
+        self._association_pack = AssociationPack(pheno_files=pheno_files,
+                                                 inclusion_found=inclusion_found,
+                                                 exclusion_found=exclusion_found,
+                                                 additional_covariates_found=additional_covariates_found,
+                                                 is_binary=is_binary,
+                                                 sex=sex,
+                                                 threads=threads,
+                                                 pheno_names=pheno_names,
+                                                 found_quantitative_covariates=found_quantitative_covariates,
+                                                 found_categorical_covariates=found_categorical_covariates)
+
+    def get_association_pack(self):
+        return self._association_pack
+
+    def set_association_pack(self, objects: AssociationPack):
+        self._association_pack = objects
+
+    # Get number of cores available to the instance:
+    @staticmethod
+    def _get_num_threads() -> int:
+        threads = os.cpu_count()
+        print(f'{"Number of threads available":{65}}: {threads}')
+        return threads
 
     # Bring our docker image into our environment so that we can run commands we need:
     @staticmethod
     def _ingest_docker_file() -> None:
-        cmd = "docker pull egardner413/mrcepid-associationtesting:latest"
+        cmd = "docker pull egardner413/mrcepid-burdentesting:latest"
         run_cmd(cmd)
 
     # Get transcripts for easy annotation:
     @staticmethod
-    def _ingest_transcript_index(transcript_index: dict) -> None:
-        dxpy.download_dxfile(dxpy.DXFile(transcript_index).get_id(), 'transcripts.tsv.gz')
+    def _ingest_transcript_index(transcript_index: dxpy.DXFile) -> None:
+        dxpy.download_dxfile(transcript_index.get_id(), 'transcripts.tsv.gz')
 
     @staticmethod
-    def _ingest_genetic_data(bed_file: dict, fam_file: dict, bim_file: dict, low_MAC_list: dict,
-                              sparse_grm: dict, sparse_grm_sample: dict) -> None:
-        # Now grab all genetic data that I have in the folder /project_resources/genetics/
-        os.mkdir("genetics/")  # This is for legacy reasons to make sure all tests work...
-        dxpy.download_dxfile(dxpy.DXFile(bed_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.bed')
-        dxpy.download_dxfile(dxpy.DXFile(bim_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.bim')
-        dxpy.download_dxfile(dxpy.DXFile(fam_file).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.fam')
-        dxpy.download_dxfile(dxpy.DXFile(low_MAC_list).get_id(), 'genetics/UKBB_470K_Autosomes_QCd.low_MAC.snplist')
-        # This is the sparse matrix
-        dxpy.download_dxfile(dxpy.DXFile(sparse_grm).get_id(),
-                             'genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx')
-        dxpy.download_dxfile(dxpy.DXFile(sparse_grm_sample).get_id(),
-                             'genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt')
+    def _ingest_phenofile(phenofile: List[dxpy.DXFile]) -> List[str]:
 
-    def _ingest_phenofile(self, phenofile: list) -> None:
-
-        # There can be multiple phenotype files in phewas mode, so we iterate through the list of them here
+        # There can be multiple phenotype files in some modes, so we iterate through the list of them here
+        phenofiles = []
         for pheno in phenofile:
-            curr_pheno = dxpy.DXFile(pheno)
-            curr_pheno_name = curr_pheno.describe()['name']
+            curr_pheno_name = pheno.describe()['name']
 
-            dxpy.download_dxfile(curr_pheno.get_id(), curr_pheno_name)
-            self.phenofiles.append(curr_pheno_name)
+            dxpy.download_dxfile(pheno.get_id(), curr_pheno_name)
+            phenofiles.append(curr_pheno_name)
+
+        return phenofiles
 
     # Get covariate/phenotype data:
-    def _ingest_covariates(self, base_covariates: dict, covarfile: dict) -> None:
-        dxpy.download_dxfile(dxpy.DXFile(base_covariates).get_id(), 'base_covariates.covariates')
+    @staticmethod
+    def _ingest_covariates(base_covariates: dxpy.DXFile, covarfile: dxpy.DXFile) -> bool:
+        dxpy.download_dxfile(base_covariates.get_id(), 'base_covariates.covariates')
 
         # Check if additional covariates were provided:
+        additional_covariates_found = False
         if covarfile is not None:
-            covarfile = dxpy.DXFile(covarfile)
-            dxpy.download_dxfile(covarfile, 'additional_covariates.covariates')
-            self.additional_covariates_found = True
+            dxpy.download_dxfile(covarfile.get_id(), 'additional_covariates.covariates')
+            additional_covariates_found = True
 
-    # Need to grab the tarball file for associations...
-    # This was generated by the applet mrcepid-collapsevariants
-    # Ingest the list file into this AWS instance
-    def _ingest_tarballs(self, association_tarballs: dict) -> None:
-
-        dxtarballs = dxpy.DXFile(association_tarballs)
-        self.is_snp_tar = False
-        self.is_gene_tar = False
-        if '.tar.gz' in dxtarballs.describe()['name']:
-            # likely to be a single tarball, download, check, and extract:
-            tarball_name = dxtarballs.describe()['name']
-            dxpy.download_dxfile(dxtarballs, tarball_name)
-            if tarfile.is_tarfile(tarball_name):
-                tarball_prefix = tarball_name.replace(".tar.gz", "")
-                self.tarball_prefixes.append(tarball_prefix)
-                tar = tarfile.open(tarball_name, "r:gz")
-                tar.extractall()
-                if exists(tarball_prefix + ".SNP.BOLT.bgen"):
-                    self.is_snp_tar = True
-                elif exists(tarball_prefix + ".GENE.BOLT.bgen"):
-                    self.is_gene_tar = True
-            else:
-                raise dxpy.AppError("Provided association tarball (" + dxtarballs.describe()['id'] + ") is not a tar.gz file")
-        else:
-            # Likely to be a list of tarballs, download and extract...
-            dxpy.download_dxfile(dxtarballs, "tarball_list.txt")
-            with open("tarball_list.txt", "r") as tarball_reader:
-                for association_tarball in tarball_reader:
-                    association_tarball = association_tarball.rstrip()
-                    tarball = dxpy.DXFile(association_tarball)
-                    tarball_name = tarball.describe()['name']
-                    dxpy.download_dxfile(tarball, tarball_name)
-
-                    # Need to get the prefix on the tarball to access resources within:
-                    # All files within SHOULD have the same prefix as this file
-                    tarball_prefix = tarball_name.rstrip('.tar.gz')
-                    self.tarball_prefixes.append(tarball_prefix)
-                    tar = tarfile.open(tarball_name, "r:gz")
-                    tar.extractall()
-                    if exists(tarball_prefix + ".SNP.BOLT.bgen"):
-                        raise dxpy.AppError("Cannot run masks from a SNP list (" + dxtarballs.describe()['id'] + ") when running tarballs as batch...")
-                    elif exists(tarball_prefix + ".GENE.BOLT.bgen"):
-                        raise dxpy.AppError("Cannot run masks from a GENE list (" + dxtarballs.describe()['id'] + ") when running tarballs as batch...")
-
-    # Grab the entire WES variant data in bgen format
-    def _ingest_bgen(self, bgen_index: dict) -> None:
-
-        # Ingest the INDEX of bgen files:
-        bgen_index = dxpy.DXFile(bgen_index)
-        dxpy.download_dxfile(bgen_index.get_id(), "bgen_locs.tsv")
-        # and load it into a dict:
-        os.mkdir("filtered_bgen/")  # For downloading later...
-        bgen_index_csv = csv.DictReader(open("bgen_locs.tsv", "r"), delimiter="\t")
-        for line in bgen_index_csv:
-            self.bgen_dict[line['chrom']] = {'index': line['bgen_index_dxid'],
-                                             'sample': line['sample_dxid'],
-                                             'bgen': line['bgen_dxid'],
-                                             'vep': line['vep_dxid']}
+        return additional_covariates_found
 
     # Get inclusion/exclusion sample lists
-    def _define_exclusion_lists(self, inclusion_list, exclusion_list) -> None:
+    @staticmethod
+    def _define_exclusion_lists(inclusion_list: dxpy.DXFile, exclusion_list: dxpy.DXFile) -> Tuple[bool, bool]:
+        inclusion_found, exclusion_found = False, False
         if inclusion_list is not None:
-            inclusion_list = dxpy.DXFile(inclusion_list)
-            dxpy.download_dxfile(inclusion_list, 'INCLUSION.lst')
-            self.inclusion_found = True
+            dxpy.download_dxfile(inclusion_list.get_id(), 'INCLUSION.lst')
+            inclusion_found = True
         if exclusion_list is not None:
-            exclusion_list = dxpy.DXFile(exclusion_list)
-            dxpy.download_dxfile(exclusion_list, 'EXCLUSION.lst')
-            self.exclusion_found = True
+            dxpy.download_dxfile(exclusion_list.get_id(), 'EXCLUSION.lst')
+            exclusion_found = True
+
+        return inclusion_found, exclusion_found
+
+    # Define individuals based on exclusion/inclusion lists
+    @staticmethod
+    def _select_individuals(inclusion_found, exclusion_found) -> Set[str]:
+
+        # Three steps:
+        # 1. Get a list of individuals that we ARE going to use
+        include_samples = set()
+        if inclusion_found is True:
+            inclusion_file = open('INCLUSION.lst', 'r')
+            for indv in inclusion_file:
+                indv = indv.rstrip()
+                include_samples.add(indv)
+
+        # 2. Get a list of individuals that we ARE NOT going to use
+        exclude_samples = set()
+        if exclusion_found is True:
+            exclude_file = open('EXCLUSION.lst', 'r')
+            for indv in exclude_file:
+                indv = indv.rstrip()
+                exclude_samples.add(indv)
+
+        # 3. Get individuals that are POSSIBLE to include (they actually have WES AND pass genetic data filtering) and
+        # only keep 'include' samples.
+        # Remember! the genetic data has already been filtered to individuals with WES data.
+
+        # A set of all possible samples to include in this analysis
+        genetics_samples = set()
+
+        with open('base_covariates.covariates', 'r') as base_covariates_file:
+            base_covar_reader = csv.DictReader(base_covariates_file, delimiter="\t")
+            for indv in base_covar_reader:
+                eid = indv['eid']
+                genetics_status = int(indv['genetics_qc_pass'])
+                # extract the variable indicating whether an individual has passed genetic data QC:
+                if genetics_status == 1:
+                    if inclusion_found is False and exclusion_found is False:
+                        genetics_samples.add(eid)
+                    elif inclusion_found is False and exclusion_found is True:
+                        if eid not in exclude_samples:
+                            genetics_samples.add(eid)
+                    elif inclusion_found is True and exclusion_found is False:
+                        if eid in include_samples:
+                            genetics_samples.add(eid)
+                    else:
+                        if eid in include_samples and eid not in exclude_samples:
+                            genetics_samples.add(eid)
+            base_covariates_file.close()
+
+        print(f'{"Total samples after inclusion/exclusion lists applied":{65}}: {len(genetics_samples)}')
+        return genetics_samples
+
+    # This is a helper function for 'create_covariate_file()' that processes the phenotype file
+    @staticmethod
+    def _process_phenotype(pheno_name: str, pheno_files: List[str]) -> Tuple[dict, List[str]]:
+
+        # Define ways to store...
+        phenotypes = {}  # A dictionary of phenotypes for every given individual
+        pheno_names = []  # A list of all possible pheno_name strings
+
+        # Since we check for phewas mode above, this should only 'iterate' through multiple pheno_files if running in
+        # phewas mode...
+        # This for loop simply checks for phenotype names from the pheno file(s) and ingests into a list:
+        for phenofile in pheno_files:
+            dialect = csv.Sniffer().sniff(open(phenofile, 'r').readline(), delimiters=[' ', '\t'])
+            pheno_reader = csv.DictReader(open(phenofile, 'r'), delimiter=dialect.delimiter, skipinitialspace=True)
+            field_names = pheno_reader.fieldnames
+
+            # Check to make sure we have a proper identifier
+            if "FID" not in field_names and "IID" not in field_names:
+                raise RuntimeError("Pheno file does not contain FID/IID fields!")
+
+            # And ingest individual phenofields...
+            curr_pheno_names = []
+
+            # If phenoname not provided, then ingest all possible phenotypes
+            if pheno_name is None:
+                for field in field_names:
+                    if field != "FID" and field != "IID":
+                        curr_pheno_names.append(field)
+            # Else just try and munge the one phenoname from the file
+            else:
+                if pheno_name in field_names:
+                    curr_pheno_names.append(pheno_name)
+                else:
+                    raise RuntimeError("phenoname was not found in the provided phenofile!")
+
+            # And then iterate through every sample in the pheno_file and add the information to our phenotypes
+            # dictionary
+            for indv in pheno_reader:
+                # Will spit out an error if a given sample does not have data
+                for pheno in curr_pheno_names:
+                    if pheno not in phenotypes:
+                        phenotypes[pheno] = {}
+                    if indv[pheno] is None:
+                        raise dxpy.AppError("Phenotype file has blank lines!")
+                    # Exclude individuals that have missing data (NA/NAN)
+                    elif indv[pheno].lower() != "na" and indv[pheno].lower() != "nan" and indv[pheno].lower() != "":
+                        phenotypes[pheno][indv['FID']] = indv[pheno]
+
+            # Finally add all pheno_name added from this file to the final list of pheno_name to run.
+            pheno_names.extend(curr_pheno_names)
+
+        return phenotypes, pheno_names
+
+    # This is a helper function for 'create_covariate_file()' that processes requested additional phenotypes
+    @staticmethod
+    def _process_additional_covariates(additional_covariates_found: bool, categorical_covariates: List[str],
+                                       quantitative_covariates: List[str]) -> Tuple[List[str], List[str], dict]:
+
+        found_categorical_covariates = []
+        found_quantitative_covariates = []
+        add_covars = {}
+
+        if additional_covariates_found:
+            dialect = csv.Sniffer().sniff(open('additional_covariates.covariates', 'r').readline(),
+                                          delimiters=[' ', '\t'])
+            additional_covar_reader = csv.DictReader(open('additional_covariates.covariates', 'r'),
+                                                     delimiter=dialect.delimiter,
+                                                     skipinitialspace=True)
+            field_names = list.copy(additional_covar_reader.fieldnames)
+
+            # make sure the sample ID field is here and remove it from 'field_names' to help with iteration
+            if 'FID' not in field_names and 'IID' not in field_names:
+                raise dxpy.AppError('FID & IID column not found in provided covariates file!')
+            else:
+                field_names.remove('FID')
+                field_names.remove('IID')
+
+            # Now process & check the categorical/quantitative covariates lists and match it to field_names:
+            if categorical_covariates is not None:
+                for covar in categorical_covariates:
+                    if covar in field_names:
+                        found_categorical_covariates.append(covar)
+                    else:
+                        print(f'Provided categorical covariate {covar} not found in additional covariates file...')
+
+            if quantitative_covariates is not None:
+                for covar in quantitative_covariates:
+                    if covar in field_names:
+                        found_quantitative_covariates.append(covar)
+                    else:
+                        print(f'Provided quantitative covariate {covar} not found in additional covariates file...')
+
+            # Throw an error if user provided covariates but none were found
+            if (len(found_categorical_covariates) + len(found_quantitative_covariates)) == 0:
+                raise dxpy.AppError('Additional covariate file provided but no additional covariates found based on'
+                                    ' covariate names provided...')
+
+            for sample in additional_covar_reader:
+                # First check no NAs/Blanks exist
+                all_covars_found = True
+                sample_dict = {}
+                for field_name in (found_quantitative_covariates + found_categorical_covariates):
+                    if sample[field_name].lower() == "na" or\
+                            sample[field_name].lower() == "nan" or\
+                            sample[field_name].lower() == "":
+                        all_covars_found = False
+                    else:
+                        sample_dict[field_name] = sample[field_name]
+
+                if all_covars_found:
+                    add_covars[sample['IID']] = sample_dict
+
+        return found_categorical_covariates, found_quantitative_covariates, add_covars
+
+    # Do covariate processing and sample inclusion/exclusion
+    @staticmethod
+    def _create_covariate_file(genetics_samples: Set[str], phenotypes: dict, pheno_names: List[str],
+                               additional_covariates_found: bool,
+                               found_quantitative_covariates: List[str], found_categorical_covariates: List[str],
+                               add_covars: dict, sex: int, ) -> None:
+
+        # Read the base covariates into this code that we want to analyse:
+        # Formatting is weird to fit with other printing below...
+        print(f'{"Phenotype(s)":{65}}: {", ".join(pheno_names)}')
+        print(f'{"Default covariates included in model":{65}}:')
+        print(f'{" ":^{5}}{"Quantitative":{60}}: {"age, age^2, PC1..PC10"}')
+        print(f'{" ":^{5}}{"Categorical":{60}}: {"sex, WES_batch" if sex == 2 else "WES_batch"}')
+        if additional_covariates_found:
+            print(f'{"Number of individuals with non-null additional covariates":{65}}: {len(add_covars)}')
+            print(f'{"Additional covariates included in model":{65}}:')
+            print(f'{" ":^{5}}{"Quantitative":{60}}: {", ".join(found_quantitative_covariates) if len(found_quantitative_covariates) > 0 else "None"}')
+            print(f'{" ":^{5}}{"Categorical":{60}}: {", ".join(found_categorical_covariates) if len(found_categorical_covariates) > 0 else "None"}')
+        else:
+            print(f'No additional covariates provided/found beyond defaults...')
+
+        base_covar_reader = csv.DictReader(open('base_covariates.covariates', 'r'), delimiter="\t")
+        indv_written = 0  # Just to count the number of samples we will analyse
+        formatted_combo_file = open('phenotypes_covariates.formatted.txt', 'w', newline='\n')  # SAIGE needs combo file
+
+        write_fields = ["FID", "IID"]
+        write_fields = write_fields + ["PC%s" % x for x in range(1, 41)]
+        write_fields = write_fields + ["age", "age_squared", "sex", "wes_batch"]
+        write_fields = write_fields + pheno_names
+        # This doesn't matter to python if we didn't find additional covariates. A list of len() == 0 does not lengthen
+        # the target list (e.g. 'write_fields')
+        write_fields = write_fields + found_quantitative_covariates + found_categorical_covariates
+
+        combo_writer = csv.DictWriter(formatted_combo_file,
+                                      fieldnames=write_fields,
+                                      quoting=csv.QUOTE_NONE,
+                                      delimiter=" ",
+                                      extrasaction='ignore',
+                                      lineterminator='\n')
+        combo_writer.writeheader()
+
+        # Need a list of included individuals ONLY:
+        # We write both a file for every other tool and a file for regenie at the same time just in case
+        # the user requests a REGENIE run
+        include_samples = open('SAMPLES_Include.txt', 'w')
+        num_all_samples = 0
+        na_pheno_samples = 0  # for checking number of individuals missing phenotype information
+        for indv in base_covar_reader:
+            # need to exclude blank row individuals, eid is normally the only thing that shows up, so filter on sex
+            if indv['22001-0.0'] != "NA" and indv['eid'] in genetics_samples:
+                indv_writer = {'FID': indv['eid'],
+                               'IID': indv['eid']}
+                for PC in range(1, 41):
+                    old_pc = "22009-0.%s" % PC
+                    new_pc = "PC%s" % PC
+                    indv_writer[new_pc] = indv[old_pc]
+                indv_writer['age'] = int(indv['21003-0.0'])
+                indv_writer['age_squared'] = indv_writer['age']**2
+                indv_writer['sex'] = int(indv['22001-0.0'])
+                indv_writer['wes_batch'] = indv['wes.batch']
+                num_all_samples += 1
+
+                # Check if we found additional covariates and make sure this sample has non-null values
+                found_covars = False
+                if len(add_covars) > 0:
+                    if indv['eid'] in add_covars:
+                        found_covars = True
+                        for covariate in add_covars[indv['eid']]:
+                            indv_writer[covariate] = add_covars[indv['eid']][covariate]
+                else:
+                    found_covars = True
+
+                found_phenos = False
+                if len(pheno_names) == 1:
+                    pheno = pheno_names[0]
+                    if indv['eid'] in phenotypes[pheno]:
+                        found_phenos = True
+                        indv_writer[pheno] = phenotypes[pheno][indv['eid']]
+                    else:
+                        na_pheno_samples += 1
+                else:
+                    found_phenos = True  # Always true because we can exclude NAs later when running phewas
+                    for pheno in pheno_names:
+                        if indv['eid'] in phenotypes[pheno]:
+                            indv_writer[pheno] = phenotypes[pheno][indv['eid']]
+                        else:
+                            indv_writer[pheno] = 'NA'
+
+                # exclude based on sex-specific analysis if required:
+                if found_covars and found_phenos:
+                    if sex == 2:
+                        indv_written += 1
+                        combo_writer.writerow(indv_writer)
+                        include_samples.write(indv['eid'] + "\n")
+                    elif sex == indv_writer['sex']:
+                        indv_written += 1
+                        combo_writer.writerow(indv_writer)
+                        include_samples.write(indv['eid'] + "\n")
+
+        formatted_combo_file.close()
+        include_samples.close()
+
+        # Print to ensure that total number of individuals is consistent between genetic and covariate/phenotype data
+        print(f'{"Samples with covariates after include/exclude lists applied":{65}}: {num_all_samples}')
+
+        if len(pheno_names) == 1:
+            print(f'{"Number of individuals with NaN/NA phenotype information":{65}}: {na_pheno_samples}')
+        print(f'{"Number of individuals written to covariate/pheno file":{65}}: {indv_written}')

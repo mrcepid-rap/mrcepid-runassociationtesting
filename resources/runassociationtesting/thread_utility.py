@@ -34,8 +34,8 @@ class ThreadUtility:
             try:
                 total_finished_models += 1
                 if math.remainder(total_finished_models, self._incrementor) == 0:
-                    prop_finished = (total_finished_models / self._num_jobs) * 100
-                    print("{0:65}: {comp} / {tot} ({prop:0.2f})".format("Total number of threads finished", comp=total_finished_models, tot=self._num_jobs, prop=prop_finished))
+                    print(f'{"Total number of threads finished":{65}}: {total_finished_models} / {self._num_jobs} '
+                          f'({((total_finished_models / self._num_jobs) * 100):0.2f})')
                 future_results.append(future.result())
             except Exception as err:
                 print(self._error_message)

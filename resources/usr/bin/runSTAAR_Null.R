@@ -47,8 +47,8 @@ if (cat_covars != "NULL") {
 }
 
 # Load GRM:
-sparse_kinship <- readMM("/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx")
-sparse_kinship_samples <- fread("/test/genetics/sparseGRM_450K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt")
+sparse_kinship <- readMM("/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx")
+sparse_kinship_samples <- fread("/test/genetics/sparseGRM_470K_Autosomes_QCd.sparseGRM.mtx.sampleIDs.txt")
 rownames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 colnames(sparse_kinship) <- as.character(sparse_kinship_samples[,V1])
 

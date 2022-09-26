@@ -1,21 +1,39 @@
-class AssociationPack:
+import dxpy
 
-    def __init__(self, tarball_prefixes: list, bgen_dict: dict, is_binary: bool, sex: int, threads: int,
-                 run_marker_tests: bool, output_prefix: str, pheno_names: list, mode: str, is_snp_tar: bool, is_gene_tar: bool,
-                 found_quantitative_covariates: list, found_categorical_covariates: list, gene_ids: list):
+from abc import ABC
+from dataclasses import dataclass
+from typing import List
 
-        self.tarball_prefixes = tarball_prefixes
-        self.bgen_dict = bgen_dict
+
+@dataclass
+class ProgramArgs(ABC):
+    phenofile: List[dxpy.DXFile]
+    phenoname: str
+    covarfile: dxpy.DXFile
+    categorical_covariates: List[str]
+    quantitative_covariates: List[str]
+    is_binary: bool
+    sex: int
+    exclusion_list: dxpy.DXFile
+    inclusion_list: dxpy.DXFile
+    transcript_index: dxpy.DXFile
+    base_covariates: dxpy.DXFile
+
+
+class AssociationPack(ABC):
+
+    def __init__(self, pheno_files: List[str],
+                 inclusion_found: bool, exclusion_found: bool, additional_covariates_found: bool,
+                 is_binary: bool, sex: int, threads: int, pheno_names: List[str],
+                 found_quantitative_covariates: List[str], found_categorical_covariates: List[str]):
+
+        self.pheno_files = pheno_files
+        self.exclusion_found = exclusion_found
+        self.inclusion_found = inclusion_found
+        self.additional_covariates_found = additional_covariates_found
         self.is_binary = is_binary
         self.sex = sex
         self.threads = threads
-        self.run_marker_tests = run_marker_tests
-        self.output_prefix = output_prefix
         self.pheno_names = pheno_names
-        self.mode = mode
-        self.is_snp_tar = is_snp_tar
-        self.is_gene_tar = is_gene_tar
-        self.is_non_standard_tar = is_snp_tar or is_gene_tar
         self.found_quantitative_covariates = found_quantitative_covariates
         self.found_categorical_covariates = found_categorical_covariates
-        self.gene_ids = gene_ids
