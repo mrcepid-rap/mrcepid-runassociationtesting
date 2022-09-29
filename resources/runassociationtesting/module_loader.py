@@ -4,7 +4,7 @@ import argparse
 import importlib
 
 from importlib import util
-from typing import List, Type
+from typing import List, Type, Optional
 from abc import ABC, abstractmethod
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
@@ -36,13 +36,16 @@ class ModuleLoader(ABC):
     def set_outputs(self, outputs: List[str]):
         self._outputs = outputs
 
-    # A class that defines a 'dxfile' type for argparse. Unsure why it can't be a part of
+    # A class that defines a 'dxfile' type for argparse. Allows for a 'None' input default for optional files
     @staticmethod
-    def dxfile_input(input_str: str) -> dxpy.DXFile:
+    def dxfile_input(input_str: str) -> Optional[dxpy.DXFile]:
         try:
-            dxfile = dxpy.DXFile(dxid=input_str)
-            dxfile.describe()
-            return dxfile
+            if input_str is 'None':
+                return None
+            else:
+                dxfile = dxpy.DXFile(dxid=input_str)
+                dxfile.describe()
+                return dxfile
         except dxpy.exceptions.DXError:  # This just checks if the format of the input is correct
             raise TypeError(f'The input for parameter – {input_str} – '
                             f'does not look like a valid DNANexus file ID.')
