@@ -40,7 +40,7 @@ class ModuleLoader(ABC):
     @staticmethod
     def dxfile_input(input_str: str) -> Optional[dxpy.DXFile]:
         try:
-            if input_str is 'None':
+            if input_str == 'None':
                 return None
             else:
                 dxfile = dxpy.DXFile(dxid=input_str)
