@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import Tuple, Set
+from typing import Set
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
 from runassociationtesting.association_resources import *

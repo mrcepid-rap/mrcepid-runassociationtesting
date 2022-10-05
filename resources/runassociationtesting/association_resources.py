@@ -1,6 +1,6 @@
 import os
 import csv
-from typing import List
+from typing import List, Tuple, Dict
 
 import dxpy
 import gzip
@@ -212,3 +212,52 @@ def define_field_names_from_tarball_prefix(tarball_prefix: str, variant_table: p
             variant_table[field_name] = tarball_prefix_split[i - 1]
 
     return variant_table
+
+
+# Helper function to decide what covariates are included in the various REGENIE commands
+def define_covariate_string(found_quantitative_covariates: List[str], found_categorical_covariates: List[str],
+                            is_binary: bool) -> str:
+
+    suffix = ''
+    if len(found_quantitative_covariates) > 0:
+        quant_covars_join = ','.join(found_quantitative_covariates)
+        suffix = suffix + '--covarColList PC{1:10},age,age_squared,sex,' + quant_covars_join + ' '
+    else:
+        suffix = suffix + '--covarColList PC{1:10},age,age_squared,sex '
+
+    if len(found_categorical_covariates) > 0:
+        cat_covars_join = ','.join(found_categorical_covariates)
+        suffix = suffix + '--catCovarList wes_batch,' + cat_covars_join + ' '
+    else:
+        suffix = suffix + '--catCovarList wes_batch '
+
+    if is_binary:
+        suffix = suffix + '--bt --firth --approx'
+
+    return suffix
+
+
+def process_mfi_file(folder: str, chromosome: str, variant_ids: List[str] = None) -> Tuple[List[str], pd.DataFrame]:
+
+    mfi_table = pd.read_csv(f'{folder}ukb22828_c{chromosome}_b0_v3.mfi.txt',
+                            sep="\t",
+                            names=['varID', 'rsID', 'pos', 'REF', 'ALT', 'MAF', 'MA', 'INFO'])
+    num_vars = len(mfi_table)
+
+    # get variant IDs, if requested, and always make sure to return an empty dataframe
+    mfi_table['CHROM'] = chromosome
+    if variant_ids is not None:
+        # Remember that variant_dict will be an empty DataFrame if no variants are found, which is what we want
+        variant_dict = mfi_table[mfi_table['rsID'].isin(variant_ids)]
+    else:
+        variant_dict = pd.DataFrame()
+
+    # Iterate through all variants and
+    chunks = []
+    for start in range(0, num_vars, 10000):
+        end = start + 9999 if (start + 9999) < num_vars else (num_vars - 1)
+        start_coord = mfi_table.iloc[start]['pos']
+        end_coord = mfi_table.iloc[end]['pos']
+        chunks.append(f'{chromosome}:{start_coord}-{end_coord}')
+
+    return chunks, variant_dict

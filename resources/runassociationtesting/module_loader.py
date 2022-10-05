@@ -1,4 +1,3 @@
-import sys
 import dxpy
 import argparse
 import importlib
@@ -23,11 +22,12 @@ class ModuleLoader(ABC):
         self._load_general_options()
 
         # Set all possible required options as a union of top-level options required by all tools and options specific
-        # to this ('burden') tool. And then generate a union of these actual options to load
+        # to a given tool. Then generate a union of these actual options to load.
         self._load_module_options()
         self.parsed_options = self._parse_options()
 
-        # Download required files and process covariates
+        # Download required files and process covariates (this will call the subclass _ingest_data,
+        # NOT this abstractclass' _ingest_data)
         self.association_pack = self._ingest_data(self.parsed_options)
 
     def get_outputs(self) -> List[str]:
