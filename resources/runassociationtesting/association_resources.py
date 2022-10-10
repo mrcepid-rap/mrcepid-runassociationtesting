@@ -63,7 +63,7 @@ def get_chromosomes(is_snp_tar: bool = False, is_gene_tar: bool = False):
 
 
 # This downloads and process a bgen file when requested
-def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
+def process_bgen_file(chrom_bgen_index: dict, chromosome: str, download_only: bool = False) -> None:
 
     # First we have to download the actual data
     bgen_index = dxpy.DXFile(chrom_bgen_index['index'])
@@ -75,32 +75,49 @@ def process_bgen_file(chrom_bgen_index: dict, chromosome: str) -> None:
     dxpy.download_dxfile(bgen.get_id(), f'filtered_bgen/{chromosome}.filtered.bgen')
     dxpy.download_dxfile(vep.get_id(), f'filtered_bgen/{chromosome}.filtered.vep.tsv.gz')
 
-    # And then do the filtering...
-    cmd = f'plink2 --threads 4 --bgen /test/filtered_bgen/{chromosome}.filtered.bgen "ref-last" ' \
-          f'--sample /test/filtered_bgen/{chromosome}.filtered.sample ' \
-          f'--export bgen-1.2 "bits="8 ' \
-          f'--out /test/{chromosome}.markers ' \
-          f'--keep /test/SAMPLES_Include.txt'
-    run_cmd(cmd, True)
+    # And then do filtering if requested
+    if not download_only:
+        cmd = f'plink2 --threads 4 --bgen /test/filtered_bgen/{chromosome}.filtered.bgen "ref-last" ' \
+              f'--sample /test/filtered_bgen/{chromosome}.filtered.sample ' \
+              f'--export bgen-1.2 "bits="8 ' \
+              f'--out /test/{chromosome}.markers ' \
+              f'--keep /test/SAMPLES_Include.txt'
+        run_cmd(cmd, True)
 
-    # The sample file output by plink2 is a disaster, so fix it here:
-    os.rename(chromosome + '.markers.sample', chromosome + '.old')
-    with open(chromosome + '.old', 'r') as samp_file:
-        fixed_samp_bolt = open(chromosome + '.markers.bolt.sample', 'w')
-        for line in samp_file:
-            line = line.rstrip().split(" ")
-            if line[0] == 'ID_1':
-                fixed_samp_bolt.write('ID_1 ID_2 missing sex\n')
-            elif line[3] == 'D':
-                fixed_samp_bolt.write('0 0 0 D\n')
-            else:
-                fixed_samp_bolt.write(f'{line[1]} {line[1]} 0 NA\n')
-        samp_file.close()
-        fixed_samp_bolt.close()
+        # And index the file
+        cmd = f'bgenix -index -g /test/{chromosome}.markers.bgen'
+        run_cmd(cmd, True)
 
-    # And finally index the file
-    cmd = f'bgenix -index -g /test/{chromosome}.markers.bgen'
-    run_cmd(cmd, True)
+        # The sample file output by plink2 is a disaster, so fix it here:
+        os.rename(chromosome + '.markers.sample', chromosome + '.old')
+        with open(chromosome + '.old', 'r') as samp_file:
+            fixed_samp_bolt = open(chromosome + '.markers.bolt.sample', 'w')
+            for line in samp_file:
+                line = line.rstrip().split(" ")
+                if line[0] == 'ID_1':
+                    fixed_samp_bolt.write('ID_1 ID_2 missing sex\n')
+                elif line[3] == 'D':
+                    fixed_samp_bolt.write('0 0 0 D\n')
+                else:
+                    fixed_samp_bolt.write(f'{line[1]} {line[1]} 0 NA\n')
+            samp_file.close()
+            fixed_samp_bolt.close()
+
+    else:
+        # REGENIE cannot use the bgen v2 sample file, fix here:
+        os.rename(chromosome + '.markers.sample', chromosome + '.old')
+        with open(chromosome + '.old', 'r') as samp_file:
+            fixed_samp_bolt = open(chromosome + '.markers.bolt.sample', 'w')
+            for line in samp_file:
+                line = line.rstrip().split(" ")
+                if line[0] == 'ID':
+                    fixed_samp_bolt.write('ID_1 ID_2 missing sex\n')
+                elif line[2] == 'D':
+                    fixed_samp_bolt.write('0 0 0 D\n')
+                else:
+                    fixed_samp_bolt.write(f'{line[0]} {line[0]} 0 NA\n')
+            samp_file.close()
+            fixed_samp_bolt.close()
 
 
 # Build the pandas DataFrame of transcripts
