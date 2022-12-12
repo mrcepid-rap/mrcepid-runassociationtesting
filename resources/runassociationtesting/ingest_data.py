@@ -1,8 +1,8 @@
 from abc import ABC
-from typing import Set
+from typing import Set, Tuple
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
-from runassociationtesting.association_resources import *
+from general_utilities.association_resources import *
 
 
 # This class is slightly different that in other applets I have designed; it handles ALL inputs rather
@@ -314,7 +314,7 @@ class IngestData(ABC):
 
         base_covar_reader = csv.DictReader(open('base_covariates.covariates', 'r'), delimiter="\t")
         indv_written = 0  # Just to count the number of samples we will analyse
-        formatted_combo_file = open('phenotypes_covariates.formatted.txt', 'w', newline='\n')  # SAIGE needs combo file
+        formatted_combo_file = open('phenotypes_covariates.formatted.txt', 'w', newline='\n')
 
         write_fields = ["FID", "IID"]
         write_fields = write_fields + ["PC%s" % x for x in range(1, 41)]
