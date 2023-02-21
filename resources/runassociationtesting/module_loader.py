@@ -1,3 +1,4 @@
+import re
 import dxpy
 import argparse
 import importlib
@@ -57,6 +58,35 @@ class ModuleLoader(ABC):
     def comma_str(input_str: str) -> List[str]:
         input_list = input_str.split(',')
         return input_list
+
+    # Since I don't use the standard argparse (because I want to ensure options are specific to submodules)
+    # I have written a separate 'splitter' to ensure options are properly parsed into a list properly
+    @staticmethod
+    def _split_options(input_args: str) -> List[str]:
+
+        parsed_args = []
+        while len(input_args) > 0:
+            # This will match only boolean flags
+            flag_search = re.match('^(-{1,2}[\\w\\d-]+)\\s*(?:(-{1,2}[\\S\\s]*))?$', input_args)
+
+            # This will match any <name> <arg> options w or w/o '='
+            arg_search = re.match('^(-{1,2}[\\w\\d]+)(?:=|\\s+)'  # Matches flag
+                                  '((?:[\\"\'][\\S\\s]+?[\\"\'])|(?:[\\w\\d/-]+))'  # Matches argument
+                                  '(?:\\s*(-{1,2}[\\S\\s]*))?$',  # May / may not match remaining text
+                                  input_args)
+            if flag_search:
+                parsed_args.append(flag_search.group(1))
+                input_args = flag_search.group(2)
+            elif arg_search:
+                parsed_args.append(arg_search.group(1))
+                parsed_args.append(arg_search.group(2).translate({39: None, 34: None}))  # Uses ASCII values
+                input_args = arg_search.group(3)
+            else:
+                raise ValueError(f'Incorrectly formatted input string {input_args}')
+
+            # last match might not have an end group and len() in the 'while' statement cannot have 'None' as input type
+            input_args = '' if input_args is None else input_args
+        return parsed_args
 
     def _load_general_options(self) -> None:
 

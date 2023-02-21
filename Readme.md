@@ -58,6 +58,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.3.3
+  * Modified how strings in the 'input_args' input are parsed to ensure paths with spaces can be parsed properly
+  * Refactored job management code into a single package in general_utilities 
+
 * v1.3.2
   * Introduced a new python package which contains various resources previously provided by the 'association_resources.py file' to enable easier code maintenance. 
     * This change should be invisible to most users.
