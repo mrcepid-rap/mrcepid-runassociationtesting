@@ -58,6 +58,11 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.3.4
+  * Emergency fix to correct parsing of array-type arguments
+  * Refactored R scripts formerly in `/resources/` to be part of the general_utilities repository, where they are ctually called
+  * Removed dependencies in dxapp.json for pandas and statsmodels as they are now resolved by the general_utilities package
+
 * v1.3.3
   * Modified how strings in the 'input_args' input are parsed to ensure paths with spaces can be parsed properly
   * Refactored job management code into a single package in general_utilities 

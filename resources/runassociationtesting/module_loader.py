@@ -64,25 +64,44 @@ class ModuleLoader(ABC):
     @staticmethod
     def _split_options(input_args: str) -> List[str]:
 
-        parsed_args = []
-        while len(input_args) > 0:
-            # This will match only boolean flags
-            flag_search = re.match('^(-{1,2}[\\w\\d-]+)\\s*(?:(-{1,2}[\\S\\s]*))?$', input_args)
+        arg_indicies = [-1]
+        last_index = -99
+        for i in range(0, len(input_args)):
+            curr_index = input_args.find(' -', i)
+            if (curr_index - 1) != last_index and curr_index != last_index and curr_index != -1:
+                arg_indicies.append(curr_index)
+                last_index = curr_index
 
-            # This will match any <name> <arg> options w or w/o '='
-            arg_search = re.match('^(-{1,2}[\\w\\d]+)(?:=|\\s+)'  # Matches flag
-                                  '((?:[\\"\'][\\S\\s]+?[\\"\'])|(?:[\\w\\d/-]+))'  # Matches argument
-                                  '(?:\\s*(-{1,2}[\\S\\s]*))?$',  # May / may not match remaining text
-                                  input_args)
-            if flag_search:
-                parsed_args.append(flag_search.group(1))
-                input_args = flag_search.group(2)
-            elif arg_search:
-                parsed_args.append(arg_search.group(1))
-                parsed_args.append(arg_search.group(2).translate({39: None, 34: None}))  # Uses ASCII values
-                input_args = arg_search.group(3)
+        split_args = []
+        for i in range(0, len(arg_indicies)):
+            if i == len(arg_indicies) - 1:
+                start = arg_indicies[i] + 1
+                end = len(input_args)
             else:
-                raise ValueError(f'Incorrectly formatted input string {input_args}')
+                start = arg_indicies[i] + 1
+                end = arg_indicies[i+1]
+            split_args.append(input_args[start:end])
+
+        parsed_args = []
+        for arg in split_args:
+
+            opt_search = re.match('^(-{1,2}[\\w\\d-]+)\\s*([\\S\\s]+)?', arg)
+
+            if opt_search:
+                parsed_args.append(opt_search.group(1))
+                if opt_search.group(2):
+                    group = opt_search.group(2)
+                    # Strip any leading/lagging quotes from anything we parse:
+                    str_len = len(group)
+                    for match in re.finditer('[\'\"]', group):
+                        if match.start() == 0:
+                            group = group[1:len(group)]
+                        elif match.end() == str_len:
+                            group = group[0:len(group)-1]
+                    parsed_args.append(group)
+
+            else:
+                raise ValueError(f'Incorrectly formatted argument string {arg}')
 
             # last match might not have an end group and len() in the 'while' statement cannot have 'None' as input type
             input_args = '' if input_args is None else input_args

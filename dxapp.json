@@ -3,7 +3,7 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "openSource": false,
   "inputSpec": [
     {
@@ -53,15 +53,11 @@
     "version": "0",
     "assetDepends": [],
     "execDepends": [
-      {"name": "pandas",
-        "package_manager": "pip"},
-      {"name": "statsmodels",
-      "package_manager":  "pip"},
       {
         "name": "general_utilities",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/general_utilities.git",
-        "build_commands": "python3 setup.py install"
+        "build_commands": "pip3 install ."
       },
       {
         "name": "burden",
