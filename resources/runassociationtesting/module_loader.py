@@ -91,14 +91,28 @@ class ModuleLoader(ABC):
                 parsed_args.append(opt_search.group(1))
                 if opt_search.group(2):
                     group = opt_search.group(2)
+                    # Do post-processing for quoted arguments:
                     # Strip any leading/lagging quotes from anything we parse:
                     str_len = len(group)
+                    quote_match = 0
                     for match in re.finditer('[\'\"]', group):
                         if match.start() == 0:
+                            quote_match += 1
                             group = group[1:len(group)]
                         elif match.end() == str_len:
+                            quote_match += 1
                             group = group[0:len(group)-1]
-                    parsed_args.append(group)
+
+                    # If quote_match = 2, then the parameter was wrapped in quotes and we don't strip by whitespace,
+                    # add the argument directly as-is
+                    if quote_match == 2:
+                        parsed_args.append(group)
+
+                    # If not 2, then we need to strip by whitespace and add each argument separately
+                    else:
+                        split_group = group.split()
+                        for split in split_group:
+                            parsed_args.append(split)
 
             else:
                 raise ValueError(f'Incorrectly formatted argument string {arg}')
