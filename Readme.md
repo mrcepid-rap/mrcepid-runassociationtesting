@@ -58,6 +58,11 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.0
+  * Implemented logging feature that directly interfaces with DNANexus
+  * Implemented python DocStrings for more consistent documentation across classes/methods
+  * Removed parameters not used by downstream code from the AssociationPack class for tidying-up purposes
+
 * v1.3.6
   * Bug fix to option parsing
 
