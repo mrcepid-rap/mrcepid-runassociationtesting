@@ -26,6 +26,22 @@
       "class": "string",
       "optional": false,
       "help": "Input arguments for requested mode. Please see the README for more details on required inputs. Supply --help to this argument to get a list of possible options."
+    },
+    {
+      "name": "testing_script",
+      "label": "Invoke the runassociationtesting test suite by providing a script compatible with the 'pytest' module.",
+      "class": "file",
+      "optional": true,
+      "default": null,
+      "help": "Invoke the runassociationtesting test suite by providing a script compatible with the 'pytest' module. DO NOT use this flag unless you know what you are doing!"
+    },
+    {
+      "name": "testing_directory",
+      "label": "Directory name containing test files.",
+      "class": "string",
+      "optional": true,
+      "default": null,
+      "help": "Directory name containing test files. DO NOT use this flag unless you know what you are doing!"
     }
   ],
   "outputSpec": [

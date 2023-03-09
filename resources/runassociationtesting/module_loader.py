@@ -2,6 +2,7 @@ import re
 import dxpy
 import argparse
 
+from pathlib import Path
 from importlib import util, import_module
 from typing import List, Type, Optional
 from abc import ABC, abstractmethod
@@ -71,18 +72,39 @@ class ModuleLoader(ABC):
         """A method that defines a 'dxfile' type for argparse. Allows for a 'None' input default for optional files
 
         This method is to allow for a dxfile 'type' when defining arguments for argparse. This method is passed as an
-        argument to :func:`argparse.ArgumentParser().add_argument()` method as type=self.dxfile_input.
+        argument to :func:`argparse.ArgumentParser().add_argument()` method as type=self.dxfile_input. This method does
+        allow for generic filepaths that live somewhere on the RAP / DNANexus filesystem, but these files MUST exist
+        in the current executing project AND be an absolute path for this functionality to work.
 
-        :param input_str: A DXFile ID in the form file-1234567890ABCDEFG
+        :param input_str: A DXFile ID in the form file-1234567890ABCDEFG or an absolute path to a file in the current
+            project.
         :return: A 'nullable' dxpy.DXFile
         """
         try:
             if input_str == 'None':
                 return None
             else:
-                dxfile = dxpy.DXFile(dxid=input_str)
-                dxfile.describe()  # This will trigger the Exceptions caught below if not actually a DXFile / not found
+                # First check if the input looks like a DXFile ID (must be 'file-' + 24 alphanumeric characters)
+                if re.match('file-[\\w\\d]{24}', input_str):
+                    dxfile = dxpy.DXFile(dxid=input_str)
+                    dxfile.describe()  # This will trigger Exceptions caught below if not actually a DXFile / not found
+
+                # And then check if the file/path exists on DNANexus
+                else:
+                    file_handle = Path(input_str)
+                    found_file = dxpy.find_one_data_object(classname='file',
+                                                           project=dxpy.PROJECT_CONTEXT_ID,
+                                                           name_mode='exact',
+                                                           name=f'{file_handle.name}',
+                                                           folder=f'{file_handle.parent}',
+                                                           zero_ok=False)
+                    dxfile = dxpy.DXFile(dxid=found_file['id'], project=found_file['project'])
+
                 return dxfile
+        except dxpy.exceptions.DXSearchError:
+            raise FileNotFoundError(f'The input parameter – {input_str} – was tried as a filepath, but was not found '
+                                    f'in the project this applet has been executed from. Please confirm the file '
+                                    f'exists in this project or use a DNANexus file ID (like: file-12345...).')
         except dxpy.exceptions.DXError:  # This just checks if the format of the input is correct
             raise TypeError(f'The input for parameter – {input_str} – '
                             f'does not look like a valid DNANexus file ID.')
@@ -104,7 +126,6 @@ class ModuleLoader(ABC):
 
         input_list = input_str.split(',')
         return input_list
-
 
     @staticmethod
     def _split_options(input_args: str) -> List[str]:
@@ -211,12 +232,12 @@ class ModuleLoader(ABC):
                                   type=self.dxfile_input, dest='covarfile', required=False, default=None,
                                   metavar=example_dxfile)
         self._parser.add_argument('--categorical_covariates',
-                                  help="A space-separated list (e.g. covar1,covar2,covar3) of categorical "
+                                  help="A space-separated list (e.g. covar1 covar2 covar3) of categorical "
                                        "(e.g. WES batch) in <covarfile>. Names MUST match column header.",
                                   type=str, dest='categorical_covariates', required=False, default=None,
                                   nargs='*', metavar=('CAT_COVAR1', 'CAT_COVAR2'))
         self._parser.add_argument('--quantitative_covariates',
-                                  help="A space-separated list (e.g. covar1,covar2,covar3) of categorical (e.g. PC1) "
+                                  help="A space-separated list (e.g. covar1 covar2 covar3) of categorical (e.g. PC1) "
                                        "in <covarfile>. Names MUST match column header.",
                                   type=str, dest='quantitative_covariates', required=False, default=None,
                                   nargs='*', metavar=('QUANT_COVAR1', 'QUANT_COVAR2'))

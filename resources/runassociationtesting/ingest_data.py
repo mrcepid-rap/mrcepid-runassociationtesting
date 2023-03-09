@@ -34,7 +34,7 @@ class IngestData(ABC):
 
         self._parsed_options = parsed_options
 
-        # Grab the Docker image so we can run tools not on the DNANexus platform by default
+        # Grab the Docker image, so we can run tools not on the DNANexus platform by default
         self._ingest_docker_file()
 
         # Work our way through all the resources we need
@@ -154,7 +154,8 @@ class IngestData(ABC):
 
         :param pheno_name: Phenotype name that MUST be in the header (csv.fieldnames) of the provided file.
         :param pheno_files: List of DXFile(s) pointing to provided pheno_files.
-        :return: A dict with keys of pheno_name(s) found and values a dict with keys of IIDs and values of the given phenotype
+        :return: A dict with keys of pheno_name(s) found and values a dict with keys of IIDs and values of the
+            given phenotype
         """
 
         # A dictionary of phenotypes for every individual in the phenofile
@@ -172,12 +173,12 @@ class IngestData(ABC):
             # Now process the downloaded pheno_file and extract phenotype names/raw phenotypes
             dialect = csv.Sniffer().sniff(pheno_file.open('r').readline(), delimiters=[' ', '\t'])
             with pheno_file.open('r') as pheno_reader:
-                pheno_csv = csv.DictReader(pheno_reader, delimiter=dialect.delimiter, skipinitialspace=True)
+                pheno_csv = csv.DictReader(pheno_reader, delimiter=dialect.delimiter)
                 field_names = pheno_csv.fieldnames
 
                 # Check to make sure we have a proper identifier
-                if "FID" not in field_names and "IID" not in field_names:
-                    raise RuntimeError("Pheno file does not contain FID/IID fields!")
+                if "FID" not in field_names or "IID" not in field_names:
+                    raise ValueError("Pheno file does not contain FID/IID fields!")
 
                 # And ingest individual phenofields...
                 curr_pheno_names = []
@@ -192,9 +193,9 @@ class IngestData(ABC):
                 else:
                     if pheno_name in field_names:
                         curr_pheno_names.append(pheno_name)
-                        total_missing_dict[field] = 0
+                        total_missing_dict[pheno_name] = 0
                     else:
-                        raise RuntimeError("phenoname was not found in the provided phenofile!")
+                        raise ValueError("phenoname was not found in the provided phenofile!")
 
                 # And then iterate through every sample in the pheno_file and add the information to our phenotypes
                 # dictionary
@@ -342,8 +343,8 @@ class IngestData(ABC):
     def _process_additional_covariates(self, additional_covariates_found: bool, categorical_covariates: List[str],
                                        quantitative_covariates: List[str]
                                        ) -> Tuple[List[str], List[str], Dict[str, Dict[str, Any]]]:
-        """Identify additional covariates beyond base covariates and ensure all asked for additional covariate(s) are in the provided
-        covariate file.
+        """Identify additional covariates beyond base covariates and ensure all asked for additional covariate(s) are
+        in the provided covariate file.
 
         Process a covariate file of the form:
 
@@ -378,13 +379,12 @@ class IngestData(ABC):
 
             with additional_covariates_file.open('r') as additional_covariates_reader:
                 additional_covar_csv = csv.DictReader(additional_covariates_reader,
-                                                      delimiter=dialect.delimiter,
-                                                      skipinitialspace=True)
+                                                      delimiter=dialect.delimiter)
                 field_names = list.copy(additional_covar_csv.fieldnames)
 
                 # make sure the sample ID field is here and remove it from 'field_names' to help with iteration
-                if 'FID' not in field_names and 'IID' not in field_names:
-                    raise dxpy.AppError('FID & IID column not found in provided covariates file!')
+                if 'FID' not in field_names or 'IID' not in field_names:
+                    raise ValueError('FID & IID column not found in provided covariates file!')
                 else:
                     field_names.remove('FID')
                     field_names.remove('IID')
@@ -410,8 +410,8 @@ class IngestData(ABC):
 
                 # Throw an error if user provided covariates but none were found
                 if (len(found_categorical_covariates) + len(found_quantitative_covariates)) == 0:
-                    raise dxpy.AppError('Additional covariate file provided but no additional covariates found based on'
-                                        ' covariate names provided...')
+                    raise RuntimeError('Additional covariate file provided but no additional covariates found based on '
+                                       'covariate names provided...')
 
                 total_samples = 0
                 for sample in additional_covar_csv:
@@ -421,7 +421,10 @@ class IngestData(ABC):
                     sample_dict = {}
                     total_samples += 1
                     for covar_name in (found_quantitative_covariates + found_categorical_covariates):
-                        if sample[covar_name].lower() == "na" or\
+                        if sample[covar_name] is None:
+                            all_covars_found = False
+                            total_missing_dict[covar_name] += 1
+                        elif sample[covar_name].lower() == "na" or\
                                 sample[covar_name].lower() == "nan" or\
                                 sample[covar_name].lower() == "":
                             all_covars_found = False
@@ -499,7 +502,7 @@ class IngestData(ABC):
             combo_writer = csv.DictWriter(final_covariates_writer,
                                           fieldnames=write_fields,
                                           quoting=csv.QUOTE_NONE,
-                                          delimiter=" ",
+                                          delimiter=' ',
                                           extrasaction='ignore',
                                           lineterminator='\n')
             indv_written = 0  # Just to count the number of samples we will analyse
