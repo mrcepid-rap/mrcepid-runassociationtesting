@@ -52,6 +52,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.1
+  * Moved `test_launch.py` out of this project and into the new [mrcepid-testing repository](https://github.com/mrcepid-rap/mrcepid-testing)
+
 * v1.4.0
   * Implemented the general_utilities logging feature for all interfaces in this repository. 
     * Still to implement in individual modules 

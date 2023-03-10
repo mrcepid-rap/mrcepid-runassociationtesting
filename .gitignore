@@ -1,5 +1,4 @@
 resources/mrcepid-runassociationtesting.py
 .talismanrc
 /runassociationtesting/
-/test/test_out/
 /test/.pytest_cache/
