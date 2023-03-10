@@ -12,8 +12,11 @@ https://documentation.dnanexus.com/.
   * [Dependencies](#dependencies)
     + [Docker](#docker)
     + [Resource Files](#resource-files)
+    + [General Utilities](#general-utilities)
 - [Methodology](#methodology)
-  * [Covariate processing](#covariate-processing)
+  * [File Formats](#file-formats)
+  * [Covariate and Sample Processing](#covariate-and-sample-processing)
+- [Building Your Own Modules](#building-your-own-modules)
 - [Running on DNANexus](#running-on-dnanexus)
   * [Inputs](#inputs)
     + [DNANexus Inputs](#dnanexus-inputs)
@@ -22,25 +25,16 @@ https://documentation.dnanexus.com/.
       - [Loading New Modules](#loading-new-modules)
     + [Phenotypes File](#phenotypes-file)
     + [Inclusion / Exclusion lists](#inclusion--exclusion-lists)
-    + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate-quantitative--categorical-file)
-    + [Association Tarballs](#association-tarballs)
+    + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate--quantitative--categorical--file)
   * [Outputs](#outputs)
   * [Command line example](#command-line-example)
     + [Selecting an Instance Type](#selecting-an-instance-type)
 
 ## Introduction
 
-**PLEASE NOTE - ** this applet is very much a work in progress. Understand that some standard functionalities within 
-individual tools used by this applet have not yet been implemented. I have tried to document various "TO DOs" within this
-README where applicable, but it is by no means exhaustive!
-
-This applet performs rare variant burden testing and associated functions (e.g. extracting variants/samples and various 
-ad hoc tests). Rare variant burden tests are implemented with one of four different methods:
-
-* [BOLT](https://alkesgroup.broadinstitute.org/BOLT-LMM/BOLT-LMM_manual.html)
-* [SAIGE-GENE+](https://github.com/saigegit/SAIGE)
-* [STAAR](https://github.com/xihaoli/STAAR)
-* GLMs – vanilla linear/logistic models implemented with python's [statsmodels module](https://www.statsmodels.org/stable/index.html)
+This applet functions as the entry point to the MRCEpid testing framework for the UK Biobank (UKB) Research Access 
+Platform (RAP). This applet does include basic sample and covariate processing, but does not include any burden 
+/ genetic testing functionality and acts as an interface for modules that perform specific functions.
 
 This README makes use of DNANexus file and project naming conventions. Where applicable, an object available on the DNANexus
 platform has a hash ID like:
@@ -57,6 +51,17 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 **Note:** This README pertains to data included as part of the DNANexus project "MRC - Variant Filtering" (project-G2XK5zjJXk83yZ598Z7BpGPk)
 
 ### Changelog
+
+* v1.4.0
+  * Implemented the general_utilities logging feature for all interfaces in this repository. 
+    * Still to implement in individual modules 
+  * Added pyDoc annotation for more consistent documentation across all classes/methods
+  * Removed parameters not used by downstream code from the AssociationPack class for tidying-up purposes
+  * Cleaned up several methods in ingest_data to make code more concise
+  * Added logging of total samples missing covariate(s) / phenotype(s)
+  * Implemented tests (see `./test/` and the [Developer Readme](https://github.com/mrcepid-rap/mrcepid-runassociationtesting/blob/main/Readme.developer.md))
+    * Various bug fixes due to vulnerabilities identified during testing
+  * Heavy update of the README to reflect some outdated language
 
 * v1.3.6
   * Bug fix to option parsing
@@ -217,13 +222,19 @@ from DNANexus, all resources stored in this folder are then included with the bu
 
 #### Resource Files
 
-This applet makes use of the filtered genotype data and genetic relatedness matrices generated using the [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms)
-applet included in this repository. Please see that repository for more information.
+This applet makes use of several files generated when performing variant quality control and QC. Please see the [QC_Workflow](https://github.com/mrcepid-rap/QC_workflow)
+repository for more information on resource files.
+
+#### General Utilities
+
+A general set of helper methods for a wide-variety of tasks performed by this applet (e.g., file processing, 
+multithreading, Docker handling, etc.) and the modules that use its functionality are included in the
+[general_utilities](https://github.com/mrcepid-rap/general_utilities) repository. Please see this repo for more information.
 
 ## Methodology
 
-This applet is step 5 (mrc-runassociationtesting) of the rare variant testing pipeline developed by Eugene Gardner for the UKBiobank
-RAP at the MRC Epidemiology Unit:
+This applet is step 5 (mrc-runassociationtesting) of the rare variant testing pipeline developed by Eugene Gardner for 
+the UKBiobank RAP at the MRC Epidemiology Unit:
 
 ![](https://github.com/mrcepid-rap/.github/blob/main/images/RAPPipeline.v3.png)
 
@@ -238,14 +249,13 @@ This applet proceeds in two basic steps:
 The user selects the variant test/mode that they want to run at runtime. Please see the [inputs](#inputs)
 section for more information.
 
-### Covariate processing
+### File Formats
 
-This applet uses at least two **TAB-DELIMITED** files for providing phenotypes/covariates:
+This applet uses at least two files for providing phenotypes/covariates:
 
-1. A phenotype file to test for associations. This can be a single file with multiple phenotypes or multiple files with 
-   a single phenotype. A specific phenotype to test from a file with multiple phenotypes can be specified via the command-line. 
-
-Please see [inputs](#inputs) for how this file is structured.
+1. A tab or space-delimited phenotype file to test for associations. This can be a single file with multiple phenotypes or multiple files with 
+   a single phenotype. A specific phenotype to test from a file with multiple phenotypes can be specified via the command-line.
+   Please see [inputs](#inputs) for how this file is structured.
 
 2. Standard covariates to control for during association testing:
 
@@ -258,34 +268,38 @@ Currently, these are (with [showcase](https://biobank.ndph.ox.ac.uk/showcase/) I
 * Age at assessment - [21003](https://biobank.ndph.ox.ac.uk/showcase/field.cgi?id=21003)
 * Genetic sex - [22001](https://biobank.ndph.ox.ac.uk/showcase/field.cgi?id=22001)
 * The First 10 genetic principal components - [22009.1-10](https://biobank.ndph.ox.ac.uk/showcase/field.cgi?id=22009)
-* WES Batch - Generated by pulling .fam files for the respective UKBB WES batches and extracting individuals unique to each fam file
+* WES Batch (in batches of 200k, 450k, and 470k) - Generated by pulling .fam files for the respective UKBB WES batches and extracting individuals unique to each fam file
 * Array QC Passed – A binary value (0/1) indicating that the given participant passed array and imputation QC as defined in the [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) applet
 
 These covariates are automatically included when performing most burden testing. Sex is only included as a covariate
-when performing an association without specifying a sex on the [commandline](#inputs). 
+when performing a sex-combined analysis (the default). 
 
-3. Additional quantitative and categorical covariates. Please see the [inputs](#inputs) section for more information on 
+3. A tab or space-delimited set of additional quantitative and categorical covariates. Please see the [inputs](#inputs) section for more information on 
    how these files should be formatted.
 
-Covariates and samples are processed in the following steps:
+### Covariate and Sample Processing
 
 1. Generate an exclusion list of individuals NOT to be tested by limiting to/keeping samples in the files provided to 
-   input parameters `inclusion_list`/`exclusion_list`. Three such files are provided as part of this prject. How these files
+   input parameters `inclusion_list`/`exclusion_list`. Three such files are provided as part of this project. How these files
    were generated is described in detail as part of [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms#1-selecting-individuals).
 
-2. Subset to individuals retained AFTER filtering genotying data and selecting for individuals who have whole exome sequencing.
+2. Subset to individuals retained AFTER filtering genotyping data and selecting for individuals who have whole exome sequencing.
    How this file was generated is described in detail as part of [mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms#methodology).
    
-3. Read the phenotypes file and exclude individuals who have missing (e.g. NaN/NA) data.
+3. Read the phenotypes file and possibly exclude individuals who have missing (e.g. NaN/NA) data. When running multiple phenotypes,
+individuals with missing phenotype data are not excluded. Individuals with missing additional (e.g., via `--quantitative_covariates`)
+are ALWAYS excluded. 
 
 4. Ingest the covariates file(s) and restrict to individuals of the requested sex (see [inputs](#inputs)) that were not excluded 
    by steps (1-3). Format covariates into a file suitable for burden testing.
    
-5. Create a plink file of the genetic data that only includes individuals that will be used during rare variant burden 
-   testing.
-   
 Individual tools can then be selected with their own specific inputs and data processing according to [user input](#inputs).
-Please see those individual module's README for more information.
+Please see the desired module's README for more information.
+
+## Building Your Own Modules
+
+It is possible to develop modules based on the MRCEpid AssociationTestingFramework using the interfaces supplied in this
+repository. For more information, please see the developer README located at `Readme.developer.md`.
 
 ## Running on DNANexus
 
@@ -303,30 +317,32 @@ the type of analysis that is done via the requested module (`mode`) and ii) the 
 then uses a third input to provide information to the default set of commands that all modules provide and the requested 
 module itself (`input_args`).
 
-| input         | description                                                                                                                                              |
-|---------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| mode          | Mode to run this applet in. **MUST** match the name of an installed module. By default, can be one of 'burden', 'extract', or 'phewas'. Case must match. |
-| output_prefix | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                 |
-| input_args    | Additional inputs to control association tests. See below for what this means.                                                                           |
+| input             | description                                                                                                                                                                                                                            |
+|-------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| mode              | Mode to run this applet in. **MUST** match the name of an installed module. By default, can be one of 'burden', 'extract', or 'phewas'. Case must match.                                                                               |
+| output_prefix     | Prefix to use for naming output tar file of association statistics. Default is to use the file name 'assoc_stats.tar.gz'                                                                                                               |
+| input_args        | Additional inputs to control association tests. See below for what this means.                                                                                                                                                         |
+| testing_script    | Invoke the runassociationtesting test suite by providing a script compatible with the 'pytest' module. DO NOT use this flag unless you know what you are doing! See the developer readme (`Readme.developer.md`) for more information. |
+| testing_directory | Testing directory containing test files for the runassociationtesting test suite. DO NOT use this flag unless you know what you are doing! See the developer readme (`Readme.developer.md`) for more information.                      |
 
 #### Command-Line Inputs
 
 These are a standard set of command-line inputs for all modules provided using the `input_args` input described 
 above. For how these inputs are provided, see the [examples below](#running-on-dnanexus). If the option is not required,
-defaults for each option are provided in **[bold brackets]**. Boolean options are flags, and change to 'true' when
-provided.
+defaults for each option are provided in **[bold brackets]**. Boolean options are flags, do not require an input, and 
+set the indicated parameter to 'true' when provided.
 
 | input                   | Boolean? | Required? | description                                                                                                                                                                          |
 |-------------------------|----------|-----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | phenofile               | False    | **True**  | Phenotype file(s) – see below for more information on the format of these file(s). This can either be a single file or a space-delimited list of file IDs.                           |
 | phenoname               | False    | False     | A single phenotype name to run association tests for. This allows for a user to provide a single phenotype file with multiple phenotypes and select one phenotype to run **[None]**. |
-| is_binary               | **True** | False     | Is the given trait in the phenofile binary **[false]**?                                                                                                                              |
-| sex                     | False    | False     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                      |
-| inclusion_list          | False    | False     | File containing list of samples (eids) to include in analysis **[None]**                                                                                                             |
-| exclusion_list          | False    | False     | File containing list of samples (eids) to exclude in analysis **[None]**                                                                                                             |
 | covarfile               | False    | False     | File containing additional covariates to correct for when running association tests                                                                                                  |
 | categorical_covariates  | False    | False     | space-delimited list of categorical covariates found in covarfile to include in this model                                                                                           |
 | quantitative_covariates | False    | False     | space-delimited file of quantitative covariates found in covarfile to include in this model                                                                                          |
+| is_binary               | **True** | False     | Is the given trait in the phenofile binary **[false]**?                                                                                                                              |
+| sex                     | False    | False     | Run only one sex or both sexes be run (0 = female, 1 = male, 2 = both) **[2]**?                                                                                                      |
+| exclusion_list          | False    | False     | File containing list of samples (eids) to exclude in analysis **[None]**                                                                                                             |
+| inclusion_list          | False    | False     | File containing list of samples (eids) to include in analysis **[None]**                                                                                                             |
 | transcript_index        | False    | **True**  | Tab-delimited file of information on transcripts expected by runassociationtesting output                                                                                            |
 | base_covariates         | False    | **True**  | base covariates (age, sex, wes_batch, PC1..PC10) file for all WES UKBB participants                                                                                                  |
 
@@ -352,15 +368,9 @@ for how this works.
 A tab-delimited file with three columns and a header. Column 1 and 2 **MUST** be named FID and IID in that order. Column 3 can
 have any non-whitespace name (`pheno_name` below) that represents the phenotype that you want to test. The applet automatically 
 uses this name when performing variant testing and creating output. If providing a file with multiple phenotype columns, 
-users **MUST** choose that phenotype to test in `burden` mode using the `phenoname` input. `phenoname` must exactly match 
-the desired column. For `phewas` mode, `phenoname` is not required and **ALL* phenotypes in the provided file will be tested.
-Values for binary traits MUST be either 0/1/NA/NaN while values for continuous traits can be any float/int (e.g. 1.42 / 5) 
-or NA/NaN. Individuals with NA/NaN values are automatically excluded during testing.
-
-When running in PheWAS mode, the user can also provide a .JSON compatible file-array of multiple phenotype files on which to
-perform PheWAS. Please see the [DNANexus Documentation](https://documentation.dnanexus.com/developer/api/running-analyses/io-and-run-specifications) 
-for how to do this in the UKBB RAP. Note that the same file can be provided to both `--phenofile` file and 
-`--covarfile` so long as `--phenoname` is provided.
+users may choose to test a specific phenotype using the `phenoname` input. `phenoname` must exactly match 
+the desired column. Values for binary traits **MUST** be either 0/1/NA/NaN while values for continuous traits can be 
+any float/int (e.g. 1.42 / 5) or NA/NaN. Individuals with NA/NaN values are automatically excluded during testing.
 
 ```text
 FID IID pheno_name
@@ -368,14 +378,20 @@ FID IID pheno_name
 1000001 1000001 1
 1000002 1000002 1
 1000003 1000003 0
-1000003 1000003 NA
+1000004 1000004 NA
 ```
 
 #### Inclusion / Exclusion lists
 
-These files are single-row .txt files with one eid per line. I have created several files already, but any file that 
-conforms to the proper format can be used – one eid per line. Please see the documentation for 
-[mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) for more information.
+These files are single-row .txt files with one eid per line – Please see the documentation for 
+[mrcepid-buildgrms](https://github.com/mrcepid-rap/mrcepid-buildgrms) for more information on examples of how inclusion /
+exclusion lists are generated in this workflow.
+
+```text
+1000000
+1000001
+1000003
+```
 
 #### Additional Covariate (Quantitative / Categorical) File
 
@@ -400,29 +416,6 @@ above, all covariates will be included with the following command line provided 
 --covarfile covars.txt --categorical_covariates catCovar2 quantitative_covariates quantCovar1 quantCovar3
 ```
 
-#### Association Tarballs
-
-`association_tarballs` takes either a single DNANexus file-ID that points to a single output from the 'mrcepid-collapsevariants' tool **OR** 
-a file with multiple such DNANexus file-IDs. This file is one file-ID per line, like:
-
-```text
-file-G7z31B0J6F3ZbpGK6J0y2xxF
-file-G7z2zP8JQy2PjKjY97Zvb3z9
-file-G7z2pXjJ91Jx1ZJ4335bX52Z
-file-G7z2gBjJ9ZpVqP3098X3xK6Y
-file-G7z2VZQJ845v91751z2k9v2B
-file-G7yv39QJPY6bYJKY9776JJBG
-file-G7yqY10JkX6Y4fzvJf80z7P6
-file-G7yq4ZjJV8qPjKjY97ZvZJ85
-file-G7ypg98Jq133zgzY1yVy8gFz
-```
-
-Where each line is a different mask. An example file that includes 16 variant masks (8 variant types at two MAF cutoffs) 
-is available at `collapsed_variants_new/variant_mask_list.txt (file-G7zPvZ0JJv8v06j8Gv2ppxpJ)` in project 
-`project-G6BJF50JJv8p4PjGB9yy7YQ2`. Individual masks are available in `collapsed_variants_new/`. Please see the 
-[high-level documentation](https://github.com/mrcepid-rap#collapsed-variants) for all apps for more information on
-pre-collapsed variant files.
-
 ### Outputs
 
 | output                   | description                            |
@@ -438,28 +431,19 @@ information on some of these outputs is given in the respective modules' README.
 
 ### Command line example
 
-There are two ways to acquire this applet:
-
-1. As an **applet** – clone the repository from github and `dx build` an APPLET into your own workspace. If this is your first time doing 
+To acquire this applet, clone the repository from github and `dx build` an APPLET into your own workspace. If this is your first time doing 
 this within a project other than "MRC - Variant Filtering", please see our organisational documentation on how to download
 and build this app on the DNANexus Research Access Platform:
 
 https://github.com/mrcepid-rap
 
-2. As an **app** – use the app that has been provided in the DNANexus global namespace. This will ensure you are always using
-the latest version and keeps you from having to manually update your local version. To be able to access this app, you
-will need to be an authorised member of `org-mrc_epid_group_1_2`. Please contact Eugene Gardner if you would like to
-be added!
-
-**Note:** All commands below have been provided as if using option (2) above!
-
-This app/applet can then be run in a few different ways (`file-1234567890ABCDEFGHIJKLMN` is a placeholder, make sure to 
+This applet can then be run in a few different ways (`file-1234567890ABCDEFGHIJKLMN` is a placeholder, make sure to 
 provide the actual required input!):
 
 1. Run a BOLT burden test:
 
 ```commandline
-dx run app-mrcepid-runassociationtesting --priority low --destination results/ \ 
+dx run mrcepid-runassociationtesting --priority low --destination results/ \ 
         -imode=burden
         -ioutput_prefix="T2D.bolt" \
         -iinput_args=' \
@@ -539,7 +523,6 @@ dx run app-mrcepid-runassociationtesting --help
 dx run app-mrcepid-runassociationtesting -imode='burden' -ioutput_prefix='test' -iinput_args='--help'
 ```
 
-
 #### Selecting an Instance Type
 
 I have set a sensible (and tested) default for compute resources on DNANexus for running burden tests. This is baked into the json used for building
@@ -547,5 +530,5 @@ the app (at `dxapp.json`) so setting an instance type when running any of these 
 default is for a mem3_ssd1_v2_x64 instance (64 CPUs, 512 Gb RAM, 2400Gb storage).
 
 When using the other modules in this applet it may be pertinent to ease instance requirements. Any 
-of the mem3_ssd1_v2_xYY instance types ae suitable for this applet, where YY represents a modified CPU requirement. As 
+of the mem3_ssd1_v2_xYY instance types are suitable for this applet, where YY represents a modified CPU requirement. As 
 an example, when running `extract` for a single gene, it is only necessary to have 8 cpus (e.g. instance mem3_ssd1_v2_x8).
