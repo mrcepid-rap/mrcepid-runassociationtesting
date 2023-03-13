@@ -53,6 +53,7 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 ### Changelog
 
 * v1.4.1
+  * Slight modifications to how files are downloaded in ingest_data.py 
   * Moved `test_launch.py` out of this project and into the new [mrcepid-testing repository](https://github.com/mrcepid-rap/mrcepid-testing)
 
 * v1.4.0

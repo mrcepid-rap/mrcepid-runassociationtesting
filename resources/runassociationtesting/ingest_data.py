@@ -6,7 +6,7 @@ from abc import ABC
 from typing import Set, Tuple, List, Any, Dict
 from pathlib import Path
 
-from general_utilities.association_resources import run_cmd
+from general_utilities.association_resources import run_cmd, download_dxfile_by_name
 from general_utilities.mrc_logger import MRCLogger
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
@@ -162,10 +162,7 @@ class IngestData(ABC):
         phenotypes = {}
 
         for dx_pheno_file in pheno_files:
-            curr_pheno_file_name = dx_pheno_file.describe()['name']
-
-            dxpy.download_dxfile(dx_pheno_file.get_id(), curr_pheno_file_name)
-            pheno_file = Path(curr_pheno_file_name)
+            pheno_file = download_dxfile_by_name(dx_pheno_file)
 
             total_missing_dict = {}
             total_samples = 0
@@ -218,7 +215,7 @@ class IngestData(ABC):
                             total_missing_dict[pheno] += 1
 
             for pheno in total_missing_dict:
-                print_string = f'Total samples in file {curr_pheno_file_name}'
+                print_string = f'Total samples in file {pheno_file.name}'
                 self._logger.info(f'{print_string:{65}}: {total_samples}')
                 print_string = f'Phenotype "{pheno}" samples missing'
                 prop_missing = (total_missing_dict[pheno] / total_samples) * 100
