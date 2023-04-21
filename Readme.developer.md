@@ -32,6 +32,7 @@ cd mrcepid-testing/
    --files /path/to/mrcepid-runassociationtesting/test_data/ \
    --root_dir /path/to/mrcepid-runassociationtesting/ \
    --modules general_utilities
+   --add_opts mode:burden input_args:
 ```
 
 Please see the [mrcepid-testing repository](https://github.com/mrcepid-rap/mrcepid-testing) for more details on running 

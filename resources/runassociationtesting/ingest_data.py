@@ -314,11 +314,12 @@ class IngestData(ABC):
         # 4. Generate A set of all possible samples to include in this analysis
         genetics_samples = set()
 
-        with open('base_covariates.covariates', 'r') as base_covariates_file:
+        with Path('base_covariates.covariates').open('r') as base_covariates_file:
             base_covar_reader = csv.DictReader(base_covariates_file, delimiter="\t")
             for indv in base_covar_reader:
                 eid = indv['eid']
                 genetics_status = int(indv['genetics_qc_pass'])
+
                 # extract the variable indicating whether an individual has passed genetic data QC:
                 if genetics_status == 1:
                     if inclusion_found is False and exclusion_found is False:
@@ -421,9 +422,7 @@ class IngestData(ABC):
                         if sample[covar_name] is None:
                             all_covars_found = False
                             total_missing_dict[covar_name] += 1
-                        elif sample[covar_name].lower() == "na" or\
-                                sample[covar_name].lower() == "nan" or\
-                                sample[covar_name].lower() == "":
+                        elif sample[covar_name].lower() in ['na', 'nan', '']:
                             all_covars_found = False
                             total_missing_dict[covar_name] += 1
                         else:

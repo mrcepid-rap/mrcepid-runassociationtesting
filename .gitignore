@@ -2,4 +2,4 @@ resources/mrcepid-runassociationtesting.py
 .talismanrc
 /runassociationtesting/
 /test/.pytest_cache/
-/run_spec.adrestia.json
+/run_spec.*.json

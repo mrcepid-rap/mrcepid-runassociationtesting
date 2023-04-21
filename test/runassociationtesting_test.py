@@ -4,15 +4,17 @@
 # Prior to using this script PLEASE make sure test_data either has the following files:
 # base_covar.scrambled.tsv          covar.tsv               exclude.txt             include.txt
 # pheno_covar.scrambled.tsv         pheno_covar.txt         transcripts.tsv.gz      base_covar.tsv
-# covar.wrong_header.tsv            expected_results.tsv    pheno.tsv               pheno_covar.tsv
-# pheno_covar.wrong_header.tsv      pheno.first.tsv         pheno.second.tsv
+# covar.wrong_header.tsv            expected_results.tsv    expected_results.json   pheno.tsv
+# pheno_covar.tsv                   pheno_covar.wrong_header.tsv                    pheno.first.tsv
+# pheno.second.tsv
 #
 # OR that the script `generate_test_data.R` has been run to generate them!
-
+import json
 import os
 import sys
 from pathlib import Path
 
+import dxpy
 import pytest
 import pandas as pd
 
@@ -25,20 +27,19 @@ sys.path.append('/runassociationtesting/')
 from runassociationtesting.module_loader import conditional_import, ModuleLoader
 
 
-
-test_folder = os.getenv('TEST_DIR')
+test_folder = Path(os.getenv('TEST_DIR'))
 
 
 @pytest.mark.parametrize(
     argnames=['input_str', 'expected_filename'],
-    argvalues=zip(['file-Fx2x270Jx0j17zkb3kbBf6q2', f'{test_folder}/base_covar.tsv'],
+    argvalues=zip(['file-Fx2x270Jx0j17zkb3kbBf6q2', str(test_folder / 'base_covar.tsv')],
                   ['hs38DH.fa.gz', 'base_covar.tsv'])
 )
 def test_dxfile_input(input_str: str, expected_filename: Any):
-    """Tests that the ModuleLoader.dxfile_input can take (and find) a file on the DNoneexus platform that is either a
+    """Tests that the ModuleLoader.dxfile_input can take (and find) a file on the DNAnexus platform that is either a
     file-ID or absolute path.
 
-    :param input_str: Either a DNoneexus file-ID (e.g, file-12345...) or an absolute path.
+    :param input_str: Either a DNAnexus file-ID (e.g, file-12345...) or an absolute path.
     """
     assert ModuleLoader.dxfile_input(input_str).describe(fields={'name': True})['name'] == expected_filename
 
@@ -53,7 +54,7 @@ def test_dxfile_exceptions(input_str: str, expected_exception: Exception):
 
     The inputs should test the following errors (in order):
 
-    1. A DNoneexus file ID that doesn't actually point to a real file
+    1. A DNAnexus file ID that doesn't actually point to a real file
 
     2. A string that looks like a DNoneexus file ID but actually isn't
 
@@ -121,31 +122,15 @@ def test_import():
     assert issubclass(module_loader, ModuleLoader)
 
 
-# To regenerate this list, please use the script `generate_load_parameters.py`. This script will print a text-based
-# format of this table that can be copy-pasted into this file. Do to how I get data onto DNANexus, this is the best I
-# could do
-load_parameters = [
-    {'test_name': 'base mode', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 890, 'n_expected_columns': 47}},
-    {'test_name': 'base mode scrambled base columns', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.scrambled.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 890, 'n_expected_columns': 47}},
-    {'test_name': 'base mode scrambled pheno columns', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.scrambled.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 890, 'n_expected_columns': 47}},
-    {'test_name': 'no sex specified', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': None, 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 890, 'n_expected_columns': 47}},
-    {'test_name': 'wrong pheno name', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno4', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': 'phenoname was not found', 'n_expected_samples': 0, 'n_expected_columns': 0}},
-    {'test_name': 'no FID pheno', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.wrong_header.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': 'Pheno file does not contain', 'n_expected_samples': 0, 'n_expected_columns': 0}},
-    {'test_name': 'no named pheno', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno.tsv', 'phenoname': None, 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 900, 'n_expected_columns': 49}},
-    {'test_name': 'binary pheno', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'catPheno3', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': True, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 890, 'n_expected_columns': 47}},
-    {'test_name': 'named covars', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': 'pheno_covar.tsv', 'categorical_covariates': 'catCovar3', 'quantitative_covariates': 'quantCovar1 quantCovar2', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 860, 'n_expected_columns': 50}},
-    {'test_name': 'space-delimited pheno_covar', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.txt', 'phenoname': 'quantPheno1', 'covarfile': 'pheno_covar.txt', 'categorical_covariates': 'catCovar3', 'quantitative_covariates': 'quantCovar1 quantCovar2', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 860, 'n_expected_columns': 50}},
-    {'test_name': 'single covar', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': 'pheno_covar.tsv', 'categorical_covariates': None, 'quantitative_covariates': 'quantCovar1', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 880, 'n_expected_columns': 48}},
-    {'test_name': 'separate pheno and covars', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno.tsv', 'phenoname': 'quantPheno1', 'covarfile': 'covar.tsv', 'categorical_covariates': 'catCovar3', 'quantitative_covariates': 'quantCovar1 quantCovar2', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 860, 'n_expected_columns': 50}},
-    {'test_name': 'multiple phenos', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno.first.tsv pheno.second.tsv', 'phenoname': None, 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 900, 'n_expected_columns': 49}},
-    {'test_name': 'no FID covar', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno.tsv', 'phenoname': 'quantPheno1', 'covarfile': 'covar.wrong_header.tsv', 'categorical_covariates': 'catCovar3', 'quantitative_covariates': 'quantCovar1 quantCovar2', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': 'FID & IID column not found', 'n_expected_samples': 0, 'n_expected_columns': 0}},
-    {'test_name': 'wrong covar name', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': 'pheno_covar.tsv', 'categorical_covariates': None, 'quantitative_covariates': 'quantCovar4', 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': 'Additional covariate file provided', 'n_expected_samples': 0, 'n_expected_columns': 0}},
-    {'test_name': 'females', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '0', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 495, 'n_expected_columns': 47}},
-    {'test_name': 'males', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '1', 'exclusion_list': None, 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 395, 'n_expected_columns': 47}},
-    {'test_name': 'exclusion', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': 'exclude.txt', 'inclusion_list': None}, 'outputs': {'error_type': None, 'n_expected_samples': 830, 'n_expected_columns': 47}},
-    {'test_name': 'inclusion', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': None, 'inclusion_list': 'include.txt'}, 'outputs': {'error_type': None, 'n_expected_samples': 700, 'n_expected_columns': 47}},
-    {'test_name': 'exclusion inclusion', 'parameters': {'transcript_index': 'transcripts.tsv.gz', 'base_covariates': 'base_covar.tsv', 'phenofile': 'pheno_covar.tsv', 'phenoname': 'quantPheno1', 'covarfile': None, 'categorical_covariates': None, 'quantitative_covariates': None, 'is_binary': False, 'sex': '2', 'exclusion_list': 'exclude.txt', 'inclusion_list': 'include.txt'}, 'outputs': {'error_type': None, 'n_expected_samples': 690, 'n_expected_columns': 47}}
-]
+# To regenerate this json, please use the script `generate_load_parameters.py`.
+found_file = dxpy.find_one_data_object(classname='file',
+                                       project=dxpy.PROJECT_CONTEXT_ID,
+                                       name_mode='exact',
+                                       name='expected_results.json',
+                                       folder=f'{test_folder}',
+                                       zero_ok=False)
+dxpy.download_dxfile(dxid=found_file['id'], project=found_file['project'], filename='expected_results.json')
+load_parameters = json.load(Path('expected_results.json').open('r'))
 
 
 @pytest.mark.parametrize(
