@@ -58,7 +58,7 @@ def main(mode: str, output_prefix: str, input_args: str, testing_script: dict, t
         if testing_directory is None:
             raise ValueError(f'Testing mode invoked but -itesting_directory not provided!')
         output_tarball = test(output_prefix, testing_script, testing_directory)
-        output = {"output_tarball": dxpy.dxlink(generate_linked_dx_file(output_tarball))}
+        output = {'output_tarball': dxpy.dxlink(generate_linked_dx_file(output_tarball))}
 
     else:
         # Define the package to search for based on the 'mode' requested
@@ -88,13 +88,12 @@ def main(mode: str, output_prefix: str, input_args: str, testing_script: dict, t
 def test(output_prefix: str, testing_script: dict, testing_directory: str) -> Path:
     """Run the runassociationtesting testing suite.
 
-    This method is invisible to the applet and can only be accessed by using API calls like dxpy.DXApplet('test') on
-    a local machine. See the resources in the `./test/` folder for more information on running tests. Input
-    parameters are identical for this method as for the :fun:`main` method.
+    This method is invisible to the applet and can only be accessed by using API calls via dxpy.DXApplet() on
+    a local machine. See the resources in the `./test/` folder for more information on running tests.
 
     :param output_prefix: A prefix to name the output tarball returned by this method.
     :param testing_script: The dxfile ID of the pytest-compatible script
-    :param testing_directory: The name of the folder containing
+    :param testing_directory: The name of the folder containing test resources on the DNANexus platform
     :return: Dict of containing the pytest log in a tar.gz to ensure compatibility with the main() method returns
     """
 
