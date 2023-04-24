@@ -486,9 +486,9 @@ class IngestData(ABC):
             base_covar_csv = csv.DictReader(base_covar_reader, delimiter="\t")
 
             # Build fieldnames for final_covariates_file
-            write_fields = ["FID", "IID"]
-            write_fields = write_fields + ["PC%s" % x for x in range(1, 41)]
-            write_fields = write_fields + ["age", "age_squared", "sex", "wes_batch"]
+            write_fields = ['FID', 'IID']
+            write_fields = write_fields + ['PC%s' % x for x in range(1, 41)]
+            write_fields = write_fields + ['age', 'age_squared', 'sex', 'wes_batch', 'array_batch']
             write_fields = write_fields + pheno_names
             # This doesn't matter to python if we didn't find additional covariates. A list of len() == 0 does not
             # lengthen the target list (e.g. 'write_fields')
@@ -522,6 +522,7 @@ class IngestData(ABC):
                     indv_writer['age_squared'] = indv_writer['age']**2
                     indv_writer['sex'] = int(indv['22001-0.0'])
                     indv_writer['wes_batch'] = indv['wes.batch']
+                    indv_writer['array_batch'] = indv['22000-0.0']
                     num_all_samples += 1
 
                     # Check if we found additional covariates and make sure this sample has non-null values
