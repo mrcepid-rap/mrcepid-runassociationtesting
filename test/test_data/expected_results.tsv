@@ -1,22 +1,22 @@
 test_name	parameters	parameters	parameters	parameters	parameters	parameters	parameters	parameters	parameters	parameters	parameters	outputs	outputs	outputs
 test_name	transcript_index	base_covariates	phenofile	phenoname	covarfile	categorical_covariates	quantitative_covariates	is_binary	sex	exclusion_list	inclusion_list	error_type	n_expected_samples	n_expected_columns
-base mode	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2				890	47
-base mode scrambled base columns	transcripts.tsv.gz	base_covar.scrambled.tsv	pheno_covar.tsv	quantPheno1				FALSE	2				890	47
-base mode scrambled pheno columns	transcripts.tsv.gz	base_covar.tsv	pheno_covar.scrambled.tsv	quantPheno1				FALSE	2				890	47
-no sex specified	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE					890	47
+base mode	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2				890	48
+base mode scrambled base columns	transcripts.tsv.gz	base_covar.scrambled.tsv	pheno_covar.tsv	quantPheno1				FALSE	2				890	48
+base mode scrambled pheno columns	transcripts.tsv.gz	base_covar.tsv	pheno_covar.scrambled.tsv	quantPheno1				FALSE	2				890	48
+no sex specified	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE					890	48
 wrong pheno name	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno4				FALSE	2			phenoname was not found	0	0
 no FID pheno	transcripts.tsv.gz	base_covar.tsv	pheno_covar.wrong_header.tsv	quantPheno1				FALSE	2			Pheno file does not contain	0	0
-no named pheno	transcripts.tsv.gz	base_covar.tsv	pheno.tsv					FALSE	2				900	49
-binary pheno	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	catPheno3				TRUE	2				890	47
-named covars	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1	pheno_covar.tsv	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	50
-space-delimited pheno_covar	transcripts.tsv.gz	base_covar.tsv	pheno_covar.txt	quantPheno1	pheno_covar.txt	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	50
-single covar	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1	pheno_covar.tsv		quantCovar1	FALSE	2				880	48
-separate pheno and covars	transcripts.tsv.gz	base_covar.tsv	pheno.tsv	quantPheno1	covar.tsv	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	50
-multiple phenos	transcripts.tsv.gz	base_covar.tsv	pheno.first.tsv pheno.second.tsv					FALSE	2				900	49
+no named pheno	transcripts.tsv.gz	base_covar.tsv	pheno.tsv					FALSE	2				900	50
+binary pheno	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	catPheno3				TRUE	2				890	48
+named covars	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1	pheno_covar.tsv	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	51
+space-delimited pheno_covar	transcripts.tsv.gz	base_covar.tsv	pheno_covar.txt	quantPheno1	pheno_covar.txt	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	51
+single covar	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1	pheno_covar.tsv		quantCovar1	FALSE	2				880	49
+separate pheno and covars	transcripts.tsv.gz	base_covar.tsv	pheno.tsv	quantPheno1	covar.tsv	catCovar3	quantCovar1 quantCovar2	FALSE	2				860	51
+multiple phenos	transcripts.tsv.gz	base_covar.tsv	pheno.first.tsv pheno.second.tsv					FALSE	2				900	50
 no FID covar	transcripts.tsv.gz	base_covar.tsv	pheno.tsv	quantPheno1	covar.wrong_header.tsv	catCovar3	quantCovar1 quantCovar2	FALSE	2			FID & IID column not found	0	0
 wrong covar name	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1	pheno_covar.tsv		quantCovar4	FALSE	2			Additional covariate file provided	0	0
-females	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	0				495	47
-males	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	1				395	47
-exclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2	exclude.txt			830	47
-inclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2		include.txt		700	47
-exclusion inclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2	exclude.txt	include.txt		690	47
+females	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	0				495	48
+males	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	1				395	48
+exclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2	exclude.txt			830	48
+inclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2		include.txt		700	48
+exclusion inclusion	transcripts.tsv.gz	base_covar.tsv	pheno_covar.tsv	quantPheno1				FALSE	2	exclude.txt	include.txt		690	48
