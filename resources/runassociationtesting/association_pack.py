@@ -1,6 +1,6 @@
 import dxpy
 
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 
@@ -26,6 +26,15 @@ class ProgramArgs(ABC):
     inclusion_list: dxpy.DXFile
     transcript_index: dxpy.DXFile
     base_covariates: dxpy.DXFile
+
+    def __post_init__(self):
+        """@dataclass automatically calls this method after calling its own __init__()"""
+        self._check_opts()
+
+    @abstractmethod
+    def _check_opts(self):
+        """An abstract method that allows for additional processing of options for each module"""
+        pass
 
 
 class AssociationPack(ABC):

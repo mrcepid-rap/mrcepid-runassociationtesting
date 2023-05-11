@@ -74,7 +74,8 @@ def main(mode: str, output_prefix: str, input_args: str, testing_script: dict, t
         output_tarball = Path(f'{output_prefix}.assoc_results.tar.gz')
 
         LOGGER.info(f'Processing and writing outputs to {output_tarball.name}...')
-        tar = tarfile.open(output_tarball, "w:gz")
+        tar = tarfile.open(output_tarball, 'w:gz')
+        # TODO Make sure all modules return PATHS rather than strings
         for file in loaded_module.get_outputs():
             tar.add(file)
         tar.close()
@@ -116,7 +117,7 @@ def test(output_prefix: str, testing_script: dict, testing_directory: str) -> Pa
         pass
 
     output_tarball = Path(f'{output_prefix}.assoc_results.tar.gz')
-    tar = tarfile.open(output_tarball, "w:gz")
+    tar = tarfile.open(output_tarball, 'w:gz')
     tar.add(out_log)
     tar.close()
 

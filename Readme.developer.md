@@ -29,7 +29,7 @@ cd mrcepid-testing/
 # --root_dir is the path to the root directory containing the source code for mrcepid-runassociationtesting (could be `..` based on instructions above)
 # --modules are modules required for the current test. A branch (e.g., v1.1.0) of a given module can be requested using syntax like: general_utilities:v1.1.0 
 ./test_launch.py --script /path/to/mrcepid-runassociationtesting/test/runassociationtesting_test.py \ 
-   --files /path/to/mrcepid-runassociationtesting/test_data/ \
+   --files /path/to/mrcepid-runassociationtesting/test/test_data/ \
    --root_dir /path/to/mrcepid-runassociationtesting/ \
    --modules general_utilities
    --add_opts mode:burden input_args:

@@ -57,13 +57,13 @@ class ModuleLoader(ABC):
         # subclass _ingest_data, NOT this abstractclass' _ingest_data)
         self.association_pack = self._ingest_data(self.parsed_options)
 
-    def get_outputs(self) -> List[str]:
-        """Getter for the list of output filepaths in str format"""
+    def get_outputs(self) -> List[Path]:
+        """Getter for the list of output filepaths in Path format"""
 
         return self._outputs
 
-    def set_outputs(self, outputs: List[str]):
-        """Setter for the list of output filepaths in str format"""
+    def set_outputs(self, outputs: List[Path]):
+        """Setter for the list of output filepaths in Path format"""
 
         self._outputs = outputs
 
