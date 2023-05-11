@@ -52,6 +52,12 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.2
+  * Added a check_opts method to AssociationPack that will do high-level option parsing
+  * array_batch is now added to the covariates file by default
+    * Burden tests will not use array batch unless requested
+  * Return types of output are now Path instead of str
+
 * v1.4.1
   * Slight modifications to how files are downloaded in ingest_data.py 
   * Moved `test_launch.py` out of this project and into the new [mrcepid-testing repository](https://github.com/mrcepid-rap/mrcepid-testing)
