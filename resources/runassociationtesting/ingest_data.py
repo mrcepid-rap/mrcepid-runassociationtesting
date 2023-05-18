@@ -543,9 +543,10 @@ class IngestData(ABC):
                                 found_phenos = True
                                 indv_writer[pheno] = phenotypes[pheno][indv['eid']]
                         else:
-                            found_phenos = True  # Always true because we can exclude NAs later when running phewas
+                            found_phenos = False  # As long as this individual has ONE phenotype, write them.
                             for pheno in pheno_names:
                                 if indv['eid'] in phenotypes[pheno]:
+                                    found_phenos = True
                                     indv_writer[pheno] = phenotypes[pheno][indv['eid']]
                                 else:
                                     indv_writer[pheno] = 'NA'
