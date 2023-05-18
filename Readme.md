@@ -52,6 +52,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.3
+  * Individuals with 0 non-NA phenotypes will now be exluded from the pheno_covar file
+    * This mostly is to save space when reading pheno_covars back in for various PheWAS analysis 
+
 * v1.4.2
   * Added a check_opts method to AssociationPack that will do high-level option parsing
   * array_batch is now added to the covariates file by default
