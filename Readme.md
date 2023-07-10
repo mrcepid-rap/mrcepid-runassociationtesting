@@ -52,6 +52,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.4
+  * Changed README language to reflect linear_model refactor
+  * Refactored module names and changed imports in dxapp.json
+  
 * v1.4.3
   * Individuals with 0 non-NA phenotypes will now be exluded from the pheno_covar file
     * This mostly is to save space when reading pheno_covars back in for various PheWAS analysis 
