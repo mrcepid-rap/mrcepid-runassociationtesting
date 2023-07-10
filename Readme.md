@@ -52,6 +52,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.4
+  * Changed README language to reflect linear_model refactor
+  * Refactored module names and changed imports in dxapp.json
+  
 * v1.4.3
   * Individuals with 0 non-NA phenotypes will now be exluded from the pheno_covar file
     * This mostly is to save space when reading pheno_covars back in for various PheWAS analysis 
@@ -226,14 +230,6 @@ See `dxapp.json` for how this is implemented for this applet.
 
 This list is not exhaustive and does not include dependencies of dependencies and software needed
 to acquire other resources (e.g. wget). See the referenced Dockerfile for more information.
-
-I have written two custom scripts (`runSTAAR_Null.R` and `runSTAAR_Genes.R`) for generating a file that we need to run 
-the tool [STAAR](https://github.com/xihaoli/STAAR). These custom scripts are placed into the directory:
-
-`resources/usr/bin`
-
-and in accordance with dependency [instructions](https://documentation.dnanexus.com/developer/apps/dependency-management/asset-build-process)
-from DNANexus, all resources stored in this folder are then included with the built app at `/usr/bin/` on the launched AWS instance.
 
 #### Resource Files
 
