@@ -78,19 +78,19 @@
       {
         "name": "burden",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/mrcepid-runassociationtesting-burden.git",
+        "url":  "https://github.com/mrcepid-rap/burden.git",
         "build_commands": "pip3 install ."
       },
       {
         "name": "phewas",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/mrcepid-runassociationtesting-phewas.git",
+        "url":  "https://github.com/mrcepid-rap/phewas.git",
         "build_commands": "pip3 install ."
       },
       {
         "name": "extract",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/mrcepid-runassociationtesting-extract.git",
+        "url":  "https://github.com/mrcepid-rap/extract.git",
         "build_commands": "pip3 install ."
       }
     ]
