@@ -6,7 +6,7 @@ from abc import ABC
 from typing import Set, Tuple, List, Any, Dict
 from pathlib import Path
 
-from general_utilities.import_utils.import_lib import build_default_command_executor
+from general_utilities.job_management.command_executor import build_default_command_executor
 from general_utilities.association_resources import download_dxfile_by_name
 from general_utilities.mrc_logger import MRCLogger
 
