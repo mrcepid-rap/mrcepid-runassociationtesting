@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 
-from job_management.command_executor import CommandExecutor
+from general_utilities.job_management.command_executor import CommandExecutor
 
 
 @dataclass
