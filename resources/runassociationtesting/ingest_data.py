@@ -6,7 +6,8 @@ from abc import ABC
 from typing import Set, Tuple, List, Any, Dict
 from pathlib import Path
 
-from general_utilities.association_resources import run_cmd, download_dxfile_by_name
+from general_utilities.import_utils.import_lib import build_default_command_executor
+from general_utilities.association_resources import download_dxfile_by_name
 from general_utilities.mrc_logger import MRCLogger
 
 from runassociationtesting.association_pack import AssociationPack, ProgramArgs
@@ -35,7 +36,7 @@ class IngestData(ABC):
         self._parsed_options = parsed_options
 
         # Grab the Docker image, so we can run tools not on the DNANexus platform by default
-        self._ingest_docker_file()
+        cmd_executor = build_default_command_executor()
 
         # Work our way through all the resources we need
         # Gene transcript dictionary
@@ -79,7 +80,8 @@ class IngestData(ABC):
                                                  threads=self._get_num_threads(),
                                                  pheno_names=pheno_names,
                                                  found_quantitative_covariates=found_quantitative_covariates,
-                                                 found_categorical_covariates=found_categorical_covariates)
+                                                 found_categorical_covariates=found_categorical_covariates,
+                                                 cmd_executor=cmd_executor)
 
     def get_association_pack(self) -> AssociationPack:
         """Getter for self._association_pack
@@ -106,16 +108,6 @@ class IngestData(ABC):
         self._logger.info(f'{"Number of threads available":{65}}: {threads}')
 
         return threads
-
-    @staticmethod
-    def _ingest_docker_file() -> None:
-        """Download the default Docker image so that we can run tools not on the DNANexus platform.
-
-        :return: None
-        """
-
-        cmd = "docker pull egardner413/mrcepid-burdentesting:latest"
-        run_cmd(cmd, is_docker=False)
 
     @staticmethod
     def _ingest_transcript_index(transcript_index: dxpy.DXFile) -> None:

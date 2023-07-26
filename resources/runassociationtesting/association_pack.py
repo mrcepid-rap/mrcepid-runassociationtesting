@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List
 
+from job_management.command_executor import CommandExecutor
+
 
 @dataclass
 class ProgramArgs(ABC):
@@ -51,10 +53,12 @@ class AssociationPack(ABC):
     :param pheno_names: str names of phenotypes requested to be run for this analysis.
     :param found_quantitative_covariates: str names of any found quantitative covariates.
     :param found_categorical_covariates: str names of any found categorical covariates.
+    :param cmd_executor: Class to run system calls via the shell or Docker.
     """
 
     def __init__(self, is_binary: bool, sex: int, threads: int, pheno_names: List[str],
-                 found_quantitative_covariates: List[str], found_categorical_covariates: List[str]):
+                 found_quantitative_covariates: List[str], found_categorical_covariates: List[str],
+                 cmd_executor: CommandExecutor):
 
         self.is_binary = is_binary
         self.sex = sex
@@ -62,3 +66,4 @@ class AssociationPack(ABC):
         self.pheno_names = pheno_names
         self.found_quantitative_covariates = found_quantitative_covariates
         self.found_categorical_covariates = found_categorical_covariates
+        self.cmd_executor = cmd_executor
