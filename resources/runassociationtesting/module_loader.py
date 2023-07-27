@@ -85,7 +85,7 @@ class ModuleLoader(ABC):
                 return None
             else:
                 # First check if the input looks like a DXFile ID (must be 'file-' + 24 alphanumeric characters)
-                if re.match('file-[\\w\\d]{24}', input_str):
+                if re.match('file-\\w{24}', input_str):
                     dxfile = dxpy.DXFile(dxid=input_str)
                     dxfile.describe()  # This will trigger Exceptions caught below if not actually a DXFile / not found
 
