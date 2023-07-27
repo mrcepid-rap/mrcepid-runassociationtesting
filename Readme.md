@@ -52,6 +52,10 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.5
+  * Added the CommandExecutor class to manage import of Docker files and running commands via Docker
+    * This change ensures that all modules import the same Docker file at import
+  
 * v1.4.4
   * Changed README language to reflect linear_model refactor
   * Refactored module names and changed imports in dxapp.json
