@@ -24,7 +24,7 @@ from typing import Any, List, Dict
 # classes that follow on the DNANexus platform for proper testing.
 sys.path.append('/')
 sys.path.append('/runassociationtesting/')
-from runassociationtesting.module_loader import conditional_import, ModuleLoader
+from general_utilities.import_utils.module_loader.module_loader import conditional_import, ModuleLoader
 
 
 test_folder = Path(os.getenv('TEST_DIR'))

@@ -5,7 +5,6 @@
 # DNAnexus Python Bindings (dxpy) documentation:
 #   http://autodoc.dnanexus.com/bindings/python/current/
 import os
-import sys
 import dxpy
 import tarfile
 import pkg_resources
@@ -15,13 +14,7 @@ from pathlib import Path
 from general_utilities.association_resources import generate_linked_dx_file
 from general_utilities.mrc_logger import MRCLogger
 from general_utilities.job_management.command_executor import CommandExecutor
-
-# Update system search paths to look for modules appropriately PRIOR to attempting actual import.
-# We have to do this to get modules to run properly on DNANexus while still enabling easy programming
-sys.path.append('/')
-sys.path.append('/runassociationtesting/')
-
-from runassociationtesting.module_loader import conditional_import
+from general_utilities.import_utils.module_loader.module_loader import conditional_import
 
 MRC_LOGGER = MRCLogger()
 LOGGER = MRC_LOGGER.get_logger()
