@@ -9,15 +9,13 @@
 # pheno.second.tsv
 #
 # OR that the script `generate_test_data.R` has been run to generate them!
-import json
 import os
-import sys
-from pathlib import Path
-
+import json
 import dxpy
 import pytest
 import pandas as pd
 
+from pathlib import Path
 from typing import Any, List, Dict
 
 from general_utilities.import_utils.module_loader.module_loader import conditional_import, ModuleLoader
