@@ -14,11 +14,11 @@ in the header of the `runassotiationtesting_test.py` script. If these files are 
    * The `transcripts.tsv.gz` file cannot be regenerated here, but a description of how to generate this file is 
    available in the [QC_Workflow](https://github.com/mrcepid-rap/QC_workflow) repository in this project.
 
-3. Acquire the test_launch.py script available on github: 
+3. Acquire the test_launch.py script available on github:
 
 ```
 git clone https://github.com/mrcepid-rap/mrcepid-testing
-cd mrcepid-testing/
+cd mrcepid-testing/mrcepid-testing/
 ```
 
 4. Run the testing script

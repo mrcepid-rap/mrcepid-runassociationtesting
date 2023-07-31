@@ -8,6 +8,7 @@ import os
 import sys
 import dxpy
 import tarfile
+import pkg_resources
 
 from pathlib import Path
 
@@ -22,7 +23,8 @@ sys.path.append('/runassociationtesting/')
 
 from runassociationtesting.module_loader import conditional_import
 
-LOGGER = MRCLogger().get_logger()
+MRC_LOGGER = MRCLogger()
+LOGGER = MRC_LOGGER.get_logger()
 
 
 @dxpy.entry_point('main')
@@ -65,6 +67,7 @@ def main(mode: str, output_prefix: str, input_args: str, testing_script: dict, t
         # Define the package to search for based on the 'mode' requested
         LOGGER.info(f'Attempting to load module {mode}...')
         module_loader = conditional_import(f'{mode}.loader')
+        LOGGER.info(f'Loaded {mode} {pkg_resources.get_distribution(mode).version}')
 
         # All packages MUST have a 'start_module' class by definition
         LOGGER.info(f'Launching mode {mode}...')
@@ -73,12 +76,12 @@ def main(mode: str, output_prefix: str, input_args: str, testing_script: dict, t
 
         # Create tar of all possible output files
         output_tarball = Path(f'{output_prefix}.assoc_results.tar.gz')
-
         LOGGER.info(f'Processing and writing outputs to {output_tarball.name}...')
         tar = tarfile.open(output_tarball, 'w:gz')
-        # TODO Make sure all modules return PATHS rather than strings
+
         for file in loaded_module.get_outputs():
             tar.add(file)
+        tar.add(MRC_LOGGER.get_log_file_path())
         tar.close()
 
         # Have to do 'upload_local_file' to make sure the new file is registered with dna nexus
@@ -120,6 +123,7 @@ def test(output_prefix: str, testing_script: dict, testing_directory: str) -> Pa
     output_tarball = Path(f'{output_prefix}.assoc_results.tar.gz')
     tar = tarfile.open(output_tarball, 'w:gz')
     tar.add(out_log)
+    tar.add(MRC_LOGGER.get_log_file_path())
     tar.close()
 
     return output_tarball
