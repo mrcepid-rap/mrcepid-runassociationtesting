@@ -20,10 +20,6 @@ import pandas as pd
 
 from typing import Any, List, Dict
 
-# DO NOT move the sys.path.append() calls below - they are required to be able to import the runassociationtesting
-# classes that follow on the DNANexus platform for proper testing.
-sys.path.append('/')
-sys.path.append('/runassociationtesting/')
 from general_utilities.import_utils.module_loader.module_loader import conditional_import, ModuleLoader
 
 
