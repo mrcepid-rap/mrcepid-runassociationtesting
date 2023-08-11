@@ -153,7 +153,7 @@ def test_load_general_options(test: Dict):
 
     1. The number of columns and samples in the combined phenotype/covariate file (always phenotypes_covariates.formatted.txt) is correct
 
-    2. The number of samples in the SAMPLES_Include.txt file is correct
+    2. The number of samples in the SAMPLES_Include.txt / SAMPLES_Remove.txt files are correct
 
     3. The :func:`start_module` is able to run after startup. To test this, test_loader creates a blank test file with a name derived from the output prefix: '{output_prefix}.start_worked.txt'
 
@@ -199,13 +199,18 @@ def test_load_general_options(test: Dict):
         n_col = len(test_file.columns)
         n_row = len(test_file)
         n_samples_file = 0
+        n_remove_file = 0
         with Path('SAMPLES_Include.txt').open('r') as sample_file:
             for _ in sample_file:
                 n_samples_file += 1
+        with Path('SAMPLES_Remove.txt').open('r') as remove_file:
+            for _ in remove_file:
+                n_remove_file += 1
 
         assert n_col == n_expected_columns, f'Actual column names: {test_file.columns}'
         assert n_row == n_expected_samples
         assert n_samples_file == n_expected_samples
+        assert n_remove_file == (1000 - n_samples_file)
         assert Path(f'{output_prefix}.start_worked.txt').exists()
 
         # 3. Check loaded association pack information:
