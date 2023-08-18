@@ -56,6 +56,7 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 * v1.4.6
   * Moving to pyproject.toml from setup.py
   * Module loading is now dependent on General Utilities rather than this (runassociationtesting) repository
+  * All modules now track a version number in dxapp.json
   * Base covariates can now be ignored when running models using the --ignore-base flag
     * The --ignore-base flag removes ALL base covariates (age, age2, sex, PC1..10, wes_batch)
     * To add base covariates back into the model, two approaches can be used:
