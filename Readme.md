@@ -25,7 +25,8 @@ https://documentation.dnanexus.com/.
       - [Loading New Modules](#loading-new-modules)
     + [Phenotypes File](#phenotypes-file)
     + [Inclusion / Exclusion lists](#inclusion--exclusion-lists)
-    + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate--quantitative--categorical--file)
+    + [Ignoring Base Covariates](#ignoring-base-covariates)
+    + [Additional Covariate (Quantitative / Categorical) File](#additional-covariate-quantitative--categorical-file)
   * [Outputs](#outputs)
   * [Command line example](#command-line-example)
     + [Selecting an Instance Type](#selecting-an-instance-type)
@@ -51,6 +52,19 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 **Note:** This README pertains to data included as part of the DNANexus project "MRC - Variant Filtering" (project-G2XK5zjJXk83yZ598Z7BpGPk)
 
 ### Changelog
+
+* v1.4.6
+  * Moving to pyproject.toml from setup.py
+  * Module loading is now dependent on General Utilities rather than this (runassociationtesting) repository
+  * All modules now track a version number in dxapp.json
+  * Base covariates can now be ignored when running models using the --ignore-base flag
+    * The --ignore-base flag removes ALL base covariates (age, age2, sex, PC1..10, wes_batch)
+    * To add base covariates back into the model, two approaches can be used:
+      * They can be specified using the --categorical_covariates (for wes_batch, sex) or --quantitative_covariates (for age, age_squared, PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10) flags
+        * Note that EXACT matches must be used as shown above (e.g., sex does not match Sex) and individual PCs must be specified
+      * They can be provided as part of the file provided to --covarfile.
+        * Names must match the headers in --covarfile
+  * Module version numbers are now specified in dxapp.json
 
 * v1.4.5
   * Added the CommandExecutor class to manage import of Docker files and running commands via Docker
@@ -360,6 +374,7 @@ set the indicated parameter to 'true' when provided.
 | inclusion_list          | False    | False     | File containing list of samples (eids) to include in analysis **[None]**                                                                                                             |
 | transcript_index        | False    | **True**  | Tab-delimited file of information on transcripts expected by runassociationtesting output                                                                                            |
 | base_covariates         | False    | **True**  | base covariates (age, sex, wes_batch, PC1..PC10) file for all WES UKBB participants                                                                                                  |
+| ignore_base             | **True** | False     | Ignore base covariates when running any linear / logistic model **[false]**?                                                                                                         |
 
 #### Default Modules
 
@@ -407,6 +422,23 @@ exclusion lists are generated in this workflow.
 1000001
 1000003
 ```
+
+#### Ignoring Base Covariates
+
+The base covariates provided to the '--base_covariates' option can be ignored when running models using the `--ignore-base` flag. 
+
+The `--ignore-base` flag removes ALL base covariates (age, age2, sex, PC1..10, wes_batch) and cannot be used to select 
+specific covariates to include / exclude. Instead, To add base covariates back into the model, two approaches can be used:
+
+* They can be specified using the --categorical_covariates (for wes_batch, sex) or --quantitative_covariates (for age, age_squared, PC1, PC2, PC3, PC4, PC5, PC6, PC7, PC8, PC9, PC10) flags
+  * Note that EXACT matches must be used as shown above (e.g., sex does not match Sex) and individual PCs must be specified
+* They can be provided as part of the file provided to --covarfile.
+  * Names must match the headers in --covarfile
+
+**Note:** When deciding individuals to exclude from the run due to QC issues, note that **base covariates still determine sample 
+QC fail**, even when that given individual is NOT in a sample exclude / include list. e.g., individuals with 'NA' for sex 
+will still be excluded even if the `--ignore-base` flag is used.
+
 
 #### Additional Covariate (Quantitative / Categorical) File
 

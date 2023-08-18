@@ -9,22 +9,16 @@
 # pheno.second.tsv
 #
 # OR that the script `generate_test_data.R` has been run to generate them!
-import json
 import os
-import sys
-from pathlib import Path
-
+import json
 import dxpy
 import pytest
 import pandas as pd
 
+from pathlib import Path
 from typing import Any, List, Dict
 
-# DO NOT move the sys.path.append() calls below - they are required to be able to import the runassociationtesting
-# classes that follow on the DNANexus platform for proper testing.
-sys.path.append('/')
-sys.path.append('/runassociationtesting/')
-from runassociationtesting.module_loader import conditional_import, ModuleLoader
+from general_utilities.import_utils.module_loader.module_loader import conditional_import, ModuleLoader
 
 
 test_folder = Path(os.getenv('TEST_DIR'))
@@ -118,7 +112,7 @@ def test_import():
     module structure is implemented through the parsing of imports.
     """
 
-    module_loader = conditional_import(f'test_loader.loader')
+    module_loader = conditional_import(f'mrcepid_test_loader.loader')
     assert issubclass(module_loader, ModuleLoader)
 
 
@@ -138,10 +132,10 @@ load_parameters = json.load(Path('expected_results.json').open('r'))
     argvalues=zip(load_parameters)
 )
 def test_load_general_options(test: Dict):
-    """Test loading of options and test_data processing via the test_loader module
+    """Test loading of options and test_data processing via the mrcepid-test_loader module
 
     Since all classes included in the primary mrcepid-runassociationtesting package are interfaces, I have created a
-    'dummy' module (test_loader) that we can use to test. `test_loader` has no additional parameters (i.e.,
+    'dummy' module (mrcepid-test_loader) that we can use to test. `mrcepid_test_loader` has no additional parameters (i.e.,
     argparse) nor does it have additional files / test_data that it ingests BEYOND that already specified in the
     interfaces within mrcepid-runassociationtesting.
 
@@ -159,9 +153,9 @@ def test_load_general_options(test: Dict):
 
     1. The number of columns and samples in the combined phenotype/covariate file (always phenotypes_covariates.formatted.txt) is correct
 
-    2. The number of samples in the SAMPLES_Include.txt file is correct
+    2. The number of samples in the SAMPLES_Include.txt / SAMPLES_Remove.txt files are correct
 
-    3. The :func:`start_module` is able to run after startup. To test this, test_loader creates a blank test file with a name derived from the output prefix: '{output_prefix}.start_worked.txt'
+    3. The :func:`start_module` is able to run after startup. To test this, mrcepid_test_loader creates a blank test file with a name derived from the output prefix: '{output_prefix}.start_worked.txt'
 
     4. The correct information for this test is written to the AssociationPack class
 
@@ -181,6 +175,9 @@ def test_load_general_options(test: Dict):
             if param == 'is_binary':
                 if option is True:
                     input_args.append('--is_binary')
+            elif param == 'ignore_base':
+                if option is True:
+                    input_args.append('--ignore_base')
             elif param in file_params:
                 if param == 'phenofile':
                     pheno_formatted = ' '.join([f'{test_folder}/{file}' for file in option.split()])
@@ -195,7 +192,7 @@ def test_load_general_options(test: Dict):
 
     if error_type is None:
         # 1. Run module loader
-        module_loader = conditional_import(f'test_loader.loader')
+        module_loader = conditional_import(f'mrcepid_test_loader.loader')
         loaded_module = module_loader(output_prefix, input_args)
         association_pack = loaded_module.association_pack
         loaded_module.start_module()
@@ -205,13 +202,18 @@ def test_load_general_options(test: Dict):
         n_col = len(test_file.columns)
         n_row = len(test_file)
         n_samples_file = 0
+        n_remove_file = 0
         with Path('SAMPLES_Include.txt').open('r') as sample_file:
             for _ in sample_file:
                 n_samples_file += 1
+        with Path('SAMPLES_Remove.txt').open('r') as remove_file:
+            for _ in remove_file:
+                n_remove_file += 1
 
         assert n_col == n_expected_columns, f'Actual column names: {test_file.columns}'
         assert n_row == n_expected_samples
         assert n_samples_file == n_expected_samples
+        assert n_remove_file == (1000 - n_samples_file)
         assert Path(f'{output_prefix}.start_worked.txt').exists()
 
         # 3. Check loaded association pack information:
@@ -240,7 +242,7 @@ def test_load_general_options(test: Dict):
 
     else:
         with pytest.raises(Exception, match=test['outputs']['error_type']):
-            module_loader = conditional_import(f'test_loader.loader')
+            module_loader = conditional_import(f'mrcepid_test_loader.loader')
             loaded_module = module_loader(output_prefix, input_args)
             loaded_module.start_module()
 

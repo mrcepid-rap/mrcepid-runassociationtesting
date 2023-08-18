@@ -12,12 +12,79 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
    "n_expected_samples": 890,
    "n_expected_columns": 48
+  }
+ },
+ {
+  "test_name": "ignore base",
+  "parameters": {
+   "transcript_index": "transcripts.tsv.gz",
+   "base_covariates": "base_covar.tsv",
+   "phenofile": "pheno_covar.tsv",
+   "phenoname": "quantPheno1",
+   "covarfile": null,
+   "categorical_covariates": null,
+   "quantitative_covariates": null,
+   "is_binary": false,
+   "sex": "2",
+   "exclusion_list": null,
+   "inclusion_list": null,
+   "ignore_base": true
+  },
+  "outputs": {
+   "error_type": null,
+   "n_expected_samples": 890,
+   "n_expected_columns": 3
+  }
+ },
+ {
+  "test_name": "ignore but add base",
+  "parameters": {
+   "transcript_index": "transcripts.tsv.gz",
+   "base_covariates": "base_covar.tsv",
+   "phenofile": "pheno_covar.tsv",
+   "phenoname": "quantPheno1",
+   "covarfile": null,
+   "categorical_covariates": "wes_batch",
+   "quantitative_covariates": "sex PC1 PC5",
+   "is_binary": false,
+   "sex": "2",
+   "exclusion_list": null,
+   "inclusion_list": null,
+   "ignore_base": true
+  },
+  "outputs": {
+   "error_type": null,
+   "n_expected_samples": 890,
+   "n_expected_columns": 7
+  }
+ },
+ {
+  "test_name": "ignore but add base and covar",
+  "parameters": {
+   "transcript_index": "transcripts.tsv.gz",
+   "base_covariates": "base_covar.tsv",
+   "phenofile": "pheno_covar.tsv",
+   "phenoname": "quantPheno1",
+   "covarfile": "pheno_covar.tsv",
+   "categorical_covariates": "wes_batch catCovar3",
+   "quantitative_covariates": "sex PC1 PC5 quantCovar1",
+   "is_binary": false,
+   "sex": "2",
+   "exclusion_list": null,
+   "inclusion_list": null,
+   "ignore_base": true
+  },
+  "outputs": {
+   "error_type": null,
+   "n_expected_samples": 870,
+   "n_expected_columns": 9
   }
  },
  {
@@ -33,7 +100,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -54,7 +122,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -75,7 +144,8 @@
    "is_binary": false,
    "sex": null,
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -96,7 +166,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": "phenoname was not found",
@@ -117,7 +188,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": "Pheno file does not contain",
@@ -138,7 +210,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -159,7 +232,8 @@
    "is_binary": true,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -180,7 +254,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -201,7 +276,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -222,7 +298,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -243,7 +320,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -264,7 +342,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -285,7 +364,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": "FID & IID column not found",
@@ -306,7 +386,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": "Additional covariate file provided",
@@ -327,7 +408,8 @@
    "is_binary": false,
    "sex": "0",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -348,7 +430,8 @@
    "is_binary": false,
    "sex": "1",
    "exclusion_list": null,
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -369,7 +452,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": "exclude.txt",
-   "inclusion_list": null
+   "inclusion_list": null,
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -390,7 +474,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": null,
-   "inclusion_list": "include.txt"
+   "inclusion_list": "include.txt",
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
@@ -411,7 +496,8 @@
    "is_binary": false,
    "sex": "2",
    "exclusion_list": "exclude.txt",
-   "inclusion_list": "include.txt"
+   "inclusion_list": "include.txt",
+   "ignore_base": false
   },
   "outputs": {
    "error_type": null,
