@@ -12,12 +12,19 @@ import pkg_resources
 from pathlib import Path
 
 from general_utilities.association_resources import generate_linked_dx_file
+from general_utilities.job_management.subjob_utility import check_subjob_decorator
 from general_utilities.mrc_logger import MRCLogger
 from general_utilities.job_management.command_executor import CommandExecutor
 from general_utilities.import_utils.module_loader.module_loader import conditional_import
 
 MRC_LOGGER = MRCLogger()
 LOGGER = MRC_LOGGER.get_logger()
+
+# Before we do anything else, we MUST check if subjobs are being run through this script so that we can properly load
+# the required dxpy.entry_point() decorators into the python classpath, so they can be found by DNANexus
+loaded_module = check_subjob_decorator()
+if loaded_module:
+    LOGGER.info(f'Loaded dxpy.entrypoint module {loaded_module}')
 
 
 @dxpy.entry_point('main')

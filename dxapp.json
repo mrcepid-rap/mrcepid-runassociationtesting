@@ -3,7 +3,7 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.4.6",
+  "version": "1.4.7",
   "openSource": false,
   "inputSpec": [
     {
@@ -73,28 +73,28 @@
         "name": "general_utilities",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/general_utilities.git",
-        "tag": "v1.2.1a",
+        "tag": "v1.3.0",
         "build_commands": "pip3 install ."
       },
       {
         "name": "burden",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/burden.git",
-        "tag": "v1.1.5a",
+        "tag": "v1.1.6",
         "build_commands": "pip3 install ."
       },
       {
         "name": "phewas",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/phewas.git",
-        "tag": "v1.0.2a",
+        "tag": "v1.0.3",
         "build_commands": "pip3 install ."
       },
       {
         "name": "extract",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/extract.git",
-        "tag": "v1.0.2a",
+        "tag": "v1.0.3",
         "build_commands": "pip3 install ."
       }
     ]

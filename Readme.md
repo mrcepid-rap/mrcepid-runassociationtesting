@@ -53,6 +53,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.7
+  * Added support for running subjobs on DNANexus as part of the general_utilities package job_management.subjob_utility
+
 * v1.4.6
   * Moving to pyproject.toml from setup.py
   * Module loading is now dependent on General Utilities rather than this (runassociationtesting) repository
