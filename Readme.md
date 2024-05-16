@@ -53,6 +53,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.8
+  * Incrementing version number of dependencies in dxapp.json to reflect recent bugfixes and changes
+
 * v1.4.7
   * Added support for running subjobs on DNANexus as part of the general_utilities package job_management.subjob_utility
 
