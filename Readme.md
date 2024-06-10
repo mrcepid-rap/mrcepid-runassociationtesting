@@ -53,6 +53,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.9
+  * Incrementing `general_utilities` version number in `dxapp.json` to reflect recent changes
+
 * v1.4.8
   * Incrementing version number of dependencies in dxapp.json to reflect recent bugfixes and changes
 
