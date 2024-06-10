@@ -3,7 +3,7 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.4.8",
+  "version": "1.4.9",
   "openSource": false,
   "inputSpec": [
     {
@@ -73,7 +73,7 @@
         "name": "general_utilities",
         "package_manager": "git",
         "url":  "https://github.com/mrcepid-rap/general_utilities.git",
-        "tag": "v1.4.0",
+        "tag": "v1.5.1",
         "build_commands": "pip3 install ."
       },
       {
