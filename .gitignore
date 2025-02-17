@@ -2,3 +2,6 @@ resources/mrcepid-runassociationtesting.py
 /runassociationtesting/
 /test/.pytest_cache/
 /run_spec.*.json
+/.python-version
+/uv.lock
+/.venv/
