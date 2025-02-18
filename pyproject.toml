@@ -1,0 +1,12 @@
+[project]
+name = "mrcepid-runassociationtesting"
+version = "1.4.10"
+description = "A DNANexus app to perform genetic association"
+readme = "Readme.md"
+requires-python = "~=3.8.10"
+dependencies = [
+    "general-utilities",
+]
+
+[tool.uv.sources]
+general-utilities = { git = "https://github.com/mrcepid-rap/general_utilities.git", rev = "v1.5.1" }
