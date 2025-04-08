@@ -53,6 +53,9 @@ dx describe file-1234567890ABCDEFGHIJKLMN
 
 ### Changelog
 
+* v1.4.11
+  * Increasing general_utilities version number in dxapp.json to reflect recent changes
+
 * v1.4.10
   * Switched to uv from poetry for dependency management
 
