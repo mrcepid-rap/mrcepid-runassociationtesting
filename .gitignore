@@ -5,3 +5,5 @@ resources/mrcepid-runassociationtesting.py
 /.python-version
 /uv.lock
 /.venv/
+.idea
+src/mrcepid_runassociationtesting.egg-info
