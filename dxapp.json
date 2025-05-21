@@ -1,5 +1,5 @@
 {
-  "name": "insmed-runassociationtesting",
+  "name": "mrcepid-runassociationtesting",
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
