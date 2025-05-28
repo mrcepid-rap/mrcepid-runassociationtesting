@@ -9,4 +9,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-general-utilities = { git = "https://github.com/mrcepid-rap/general_utilities.git", tag = "1.5.2" }
+general-utilities = { git = "https://github.com/mrcepid-rap/general_utilities.git", tag = "v1.5.2" }
