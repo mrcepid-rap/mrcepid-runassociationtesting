@@ -3,7 +3,7 @@
   "title": "RunAssociationTesting",
   "summary": "Runs rare variant burden testing with various tools",
   "dxapi": "1.0.0",
-  "version": "1.4.12",
+  "version": "1.4.13",
   "openSource": false,
   "inputSpec": [
     {
@@ -76,30 +76,31 @@
       {
         "name": "general_utilities",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/general_utilities.git",
+        "url": "https://github.com/mrcepid-rap/general_utilities.git",
         "tag": "v1.5.2",
-        "build_commands": "pip3 install ."
+        "build_commands": "uv pip install --system  ."
       },
       {
         "name": "burden",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/burden.git",
+        "url": "https://github.com/mrcepid-rap/burden.git",
         "tag": "v1.1.8",
-        "build_commands": "pip3 install ."
+        "build_commands": "uv pip install --system  ."
       },
       {
         "name": "phewas",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/phewas.git",
+        "url": "https://github.com/mrcepid-rap/phewas.git",
         "tag": "v1.0.4",
-        "build_commands": "pip3 install ."
+        "build_commands": "uv pip install --system  ."
       },
       {
         "name": "extract",
         "package_manager": "git",
-        "url":  "https://github.com/mrcepid-rap/extract.git",
+        "url": "https://github.com/mrcepid-rap/extract.git",
         "tag": "v1.0.4",
-        "build_commands": "pip3 install ."
+        "build_commands": "uv pip install --system  ."
+      }
       }
     ]
   },

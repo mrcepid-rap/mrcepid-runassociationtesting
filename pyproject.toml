@@ -1,6 +1,6 @@
 [project]
 name = "mrcepid-runassociationtesting"
-version = "1.4.11"
+version = "1.4.13"
 description = "A DNANexus app to perform genetic association"
 readme = "Readme.md"
 requires-python = "~=3.8.10"
