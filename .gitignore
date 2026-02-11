@@ -8,3 +8,5 @@ resources/mrcepid-runassociationtesting.py
 .idea
 src/mrcepid_runassociationtesting.egg-info
 build
+.DS_Store
+test/.DS_Store
